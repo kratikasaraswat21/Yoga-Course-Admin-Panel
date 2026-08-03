@@ -1,0 +1,65 @@
+import { EnvConfig } from "@/utils/config/envConfig";
+import type { CookieConfigInterface } from "@/utils/interface/helper.interface";
+import { clsx, type ClassValue } from "clsx";
+import Cookies from "js-cookie";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+const getCookieConfig = (): CookieConfigInterface => {
+  const isDev = EnvConfig.CURRENT_ENVIRONMENT === "DEVELOPMENT";
+
+  return {
+    secure: !isDev,
+    sameSite: !isDev ? "None" : "Lax",
+    path: "/",
+    ...(!isDev && {
+      domain: ".orbitrms.com",
+    }),
+    expires: 30,
+  };
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const getDataFromSecureCookie = (key: string): any | null => {
+  try {
+    const cookieStorageData = Cookies.get(key);
+
+    if (!cookieStorageData) return null;
+
+    return JSON.parse(cookieStorageData);
+  } catch (error) {
+    console.error(`Error reading from localStorage (key: ${key}):`, error);
+    return null;
+  }
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const storeDataInSecureCookie = (_data: any, key: string, is_persistent: boolean, expire?: number) => {
+  if (!key) {
+    console.error("the key is required to store the data");
+    return;
+  }
+
+  const cookieConfig = getCookieConfig();
+
+  const dataToStore = JSON.stringify(_data);
+
+  if (is_persistent === true) {
+    cookieConfig.expires = expire && expire > 0 ? expire : 30;
+  }
+
+  Cookies.set(key, dataToStore, cookieConfig);
+};
+
+export const clearLocalSessionStorage = () => {
+  localStorage.clear();
+  sessionStorage.clear();
+
+  const cookieConfig: CookieConfigInterface = getCookieConfig();
+  Object.keys(Cookies.get()).forEach((cookieName) => {
+    Cookies.remove(cookieName, cookieConfig);
+  });
+};
