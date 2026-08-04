@@ -1,10 +1,11 @@
-import { CheckCircle2, Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
-import { useState, type ChangeEvent, type SubmitEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { CheckCircle2, Eye, EyeOff, KeyRound, LoaderCircle, LockKeyhole, Mail, MailCheck } from "lucide-react";
+import { useEffect, useRef, useState, type ChangeEvent, type SubmitEvent } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import {
   AlertDialog,
   AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -17,17 +18,41 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/variants/toast.manager";
 import { useDebounce } from "@/hooks/useDebounce";
 import { multipleFetchApi } from "@/utils/api/multiple.api";
+import { EnvConfig } from "@/utils/config/envConfig";
 import type { LoginFormData } from "@/utils/interface/auth.interface";
 import { validateSignInForm } from "@/utils/validation/auth.validation";
 
 function LogInPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState<LoginFormData>({ email: "", password: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState<boolean>(false);
   const [loginSuccess, setLoginSuccess] = useState(false);
+  const [showForgotPasswordDialog, setShowForgotPasswordDialog] = useState(false);
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
+  const [showResetEmailSuccessDialog, setShowResetEmailSuccessDialog] = useState(false);
   const [signature, setSignature] = useState("");
+
+  const useEffectRef = useRef(false);
+
+  useEffect(() => {
+    if (useEffectRef.current) return;
+    useEffectRef.current = true;
+    const routeState = location.state as {
+      toastNotification?: {
+        title: string;
+        description: string;
+        type: "error" | "success";
+        timeout: 1;
+      };
+    } | null;
+
+    if (!routeState?.toastNotification) return;
+
+    toast.add(routeState.toastNotification);
+  }, [location.pathname, location.search, location.state, navigate]);
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
@@ -57,8 +82,34 @@ function LogInPage() {
     setLoading(false);
   }, 100);
 
+  const handleSendResetPasswordApi = useDebounce(async () => {
+    const response = await multipleFetchApi([
+      {
+        endPoint: "/auth/forgot-password",
+        method: "POST",
+      },
+    ]);
+
+    const res = response[0];
+
+    if (!res?.data?.success) {
+      toast.add({ title: res?.data?.message, type: "error", description: "" });
+    } else {
+      setShowForgotPasswordDialog(false);
+      setShowResetEmailSuccessDialog(true);
+    }
+
+    setForgotPasswordLoading(false);
+  }, 100);
+
   const handelOtpNavigation = () => {
     navigate(`/auth/verify-otp?signature=${signature}`);
+  };
+
+  const handleSendResetPasswordInstructions = () => {
+    if (forgotPasswordLoading) return;
+    setForgotPasswordLoading(true);
+    handleSendResetPasswordApi();
   };
 
   const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
@@ -110,6 +161,7 @@ function LogInPage() {
             </label>
             <button
               className="text-xs font-medium text-slate-600 transition hover:text-slate-950 cursor-pointer"
+              onClick={() => setShowForgotPasswordDialog(true)}
               type="button">
               Forgot password?
             </button>
@@ -156,6 +208,8 @@ function LogInPage() {
         </Button>
       </form>
 
+      {/* Modal For OTP Process   */}
+
       <AlertDialog
         open={loginSuccess}
         onOpenChange={(open) => {
@@ -176,6 +230,65 @@ function LogInPage() {
           <AlertDialogFooter className="-mx-6 -mb-6 p-6 sm:-mx-8 sm:-mb-8 sm:p-8">
             <AlertDialogAction className="h-14 w-full text-base" onClick={handelOtpNavigation}>
               Continue to verification
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal For The Forgot PasswordInstruction */}
+
+      <AlertDialog
+        open={showForgotPasswordDialog}
+        onOpenChange={(open) => {
+          if (!forgotPasswordLoading) setShowForgotPasswordDialog(open);
+        }}>
+        <AlertDialogContent className="max-w-lg! gap-6 p-6 sm:p-8">
+          <AlertDialogHeader>
+            <AlertDialogMedia className="size-12 bg-slate-100 text-slate-700">
+              <KeyRound aria-hidden="true" />
+            </AlertDialogMedia>
+            <AlertDialogTitle className="text-lg">Reset the admin password?</AlertDialogTitle>
+            <AlertDialogDescription className="text-base leading-6">
+              We will send secure password-reset instructions to{" "}
+              <span className="font-medium break-all text-slate-900">
+                {EnvConfig.OWNER_MAIL || "the configured owner email address"}
+              </span>
+              . Follow the link in that email to create a new admin password.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="-mx-6 -mb-6 p-6 sm:-mx-8 sm:-mb-8 sm:p-8">
+            <AlertDialogCancel className="h-12 px-5" disabled={forgotPasswordLoading}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="h-12 min-w-52 gap-2 px-5"
+              disabled={forgotPasswordLoading}
+              onClick={handleSendResetPasswordInstructions}>
+              {forgotPasswordLoading && <LoaderCircle aria-hidden="true" className="animate-spin" />}
+              {forgotPasswordLoading ? "Sending instructions..." : "Send reset instructions"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showResetEmailSuccessDialog} onOpenChange={setShowResetEmailSuccessDialog}>
+        <AlertDialogContent className="max-w-lg! gap-6 p-6 sm:p-8">
+          <AlertDialogHeader>
+            <AlertDialogMedia className="size-12 bg-emerald-100 text-emerald-700">
+              <MailCheck aria-hidden="true" />
+            </AlertDialogMedia>
+            <AlertDialogTitle className="text-lg">Please check your email</AlertDialogTitle>
+            <AlertDialogDescription className="text-base leading-6">
+              Password-reset instructions have been sent to{" "}
+              <span className="font-medium break-all text-slate-900">
+                {EnvConfig.OWNER_MAIL || "the configured owner email address"}
+              </span>
+              . Open the email and follow the secure link to reset the admin password.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="-mx-6 -mb-6 p-6 sm:-mx-8 sm:-mb-8 sm:p-8">
+            <AlertDialogAction className="h-12 w-full" onClick={() => setShowResetEmailSuccessDialog(false)}>
+              Got it
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
