@@ -126,5 +126,14 @@
     }
   html {
     @apply font-sans;
-    }
+  }
+}
+
+.dashboard-scroll-area {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.dashboard-scroll-area::-webkit-scrollbar {
+  display: none;
 }
