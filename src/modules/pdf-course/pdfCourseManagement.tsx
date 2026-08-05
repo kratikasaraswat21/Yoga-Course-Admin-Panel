@@ -196,7 +196,7 @@ function PdfCourseManagementPage() {
         </div>
       </div>
       <div className="flex flex-col h-full flex-1 ring-1 ring-foreground/10 mt-8 rounded-xl overflow-clip relative">
-        <div className="p-4 sticky top-0 w-full bg-white z-10 flex items-center justify-between  rounded-none">
+        <div className="p-4 sticky top-0 w-full bg-white z-10 flex items-center justify-between  rounded-none ring-1 ring-foreground/10">
           <div className="relative w-full max-w-130">
             <Search aria-hidden="true" className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
             <Input
