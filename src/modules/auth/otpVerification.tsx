@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { toast } from "@/components/ui/variants/toast.manager";
 import { useDebounce } from "@/hooks/useDebounce";
-import { multipleFetchApi } from "@/utils/api/multiple.api";
+import { multipleApiHandler } from "@/utils/api/multiple.api";
 import { formatCountDownTime, getRemainingCountDownSeconds, storeDataInSecureCookie } from "@/utils/helper/helper";
 import type { OtpVerificationFormData } from "@/utils/interface/auth.interface";
 import { validateOtpVerificationForm } from "@/utils/validation/auth.validation";
@@ -29,7 +29,7 @@ function OTPVerificationPage() {
   );
 
   const handelOtpVerification = useDebounce(async (otpData: OtpVerificationFormData) => {
-    const response = await multipleFetchApi([
+    const response = await multipleApiHandler([
       {
         endPoint: "/auth/verify-otp",
         data: { otp: otpData.verificationCode },
@@ -64,7 +64,7 @@ function OTPVerificationPage() {
       toast.add({ title: "Looks Like You Are Using the Broken Url", type: "error", description: "" });
     }
 
-    const response = await multipleFetchApi([
+    const response = await multipleApiHandler([
       {
         endPoint: `/auth/resend-otp?signature=${signature}`,
         method: "POST",
@@ -128,7 +128,6 @@ function OTPVerificationPage() {
       </div>
 
       <div className="mb-10">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Verification</p>
         <h1 className="text-4xl font-semibold tracking-tight text-slate-950">Enter verification code</h1>
         <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-500">
           Enter the six-digit security code sent to the configured owner email address.

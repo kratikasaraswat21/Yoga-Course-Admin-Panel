@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from "axios";
 
 import { getDataFromSecureCookie } from "@/utils/helper/helper";
@@ -17,7 +18,7 @@ export interface EndpointObject {
 export interface CommonDataFormat {
   message: string;
   success: boolean;
-  data: Record<string, string>;
+  data: Record<string, any>;
 }
 
 export interface ApiReturnInterface {
@@ -72,7 +73,7 @@ const fetchEndpoint = async (endpoint: EndpointObject, signal?: AbortSignal): Pr
   }
 };
 
-export const multipleFetchApi = async (
+export const multipleApiHandler = async (
   endPointArr: EndpointObject[],
   signal?: AbortSignal,
 ): Promise<ApiReturnInterface[]> => Promise.all(endPointArr.map((endpoint) => fetchEndpoint(endpoint, signal)));

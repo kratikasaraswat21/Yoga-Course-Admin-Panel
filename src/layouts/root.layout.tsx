@@ -2,6 +2,7 @@ import AuthRoutes from "@/router/auth.router";
 import DashboardLayout from "@/layouts/dashboard.layout";
 import CourseEditorPage from "@/modules/course/courseEditor";
 import CourseManagementPage from "@/modules/course/courseManagement";
+import PdfCourseManagementPage from "@/modules/pdf-course/pdfCourseManagement";
 import DashboardPage from "@/modules/dashboard/dashboard";
 import ProtectedRoute from "@/router/protected.router";
 import RedirectToDashboard from "@/utils/lib/redirectToDashboard";
@@ -21,6 +22,9 @@ function RootLayout() {
             <Route index element={<CourseManagementPage />} />
             <Route path="add" element={<CourseEditorPage />} />
             <Route path="edit" element={<CourseEditorPage />} />
+          </Route>
+          <Route path="/pdf-courses" element={<DashboardLayout />}>
+            <Route index element={<PdfCourseManagementPage />} />
           </Route>
         </Route>
         <Route path="*" element={<RedirectToDashboard />} />

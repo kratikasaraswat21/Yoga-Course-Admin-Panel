@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/variants/toast.manager";
 import { useDebounce } from "@/hooks/useDebounce";
-import { multipleFetchApi } from "@/utils/api/multiple.api";
+import { multipleApiHandler } from "@/utils/api/multiple.api";
 import type { ResetPasswordFormData } from "@/utils/interface/auth.interface";
 import { validateResetPasswordForm } from "@/utils/validation/auth.validation";
 
@@ -40,7 +40,7 @@ function ResetPasswordPage() {
       return;
     }
 
-    const response = await multipleFetchApi([
+    const response = await multipleApiHandler([
       {
         endPoint: `/auth/reset-password`,
         method: "POST",

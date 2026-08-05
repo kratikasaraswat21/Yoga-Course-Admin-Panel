@@ -9,7 +9,6 @@ function OfflineScreenComponent() {
           <WifiOff aria-hidden="true" className="size-9" strokeWidth={1.8} />
         </div>
 
-        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">Connection lost</p>
         <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">You&apos;re offline</h1>
         <p className="mx-auto mt-4 max-w-sm text-sm leading-6 text-muted-foreground sm:text-base">
           Check your internet connection and try again. We&apos;ll take you back to the dashboard as soon as you&apos;re

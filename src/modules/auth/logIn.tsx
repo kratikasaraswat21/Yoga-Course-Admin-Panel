@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/variants/toast.manager";
 import { useDebounce } from "@/hooks/useDebounce";
-import { multipleFetchApi } from "@/utils/api/multiple.api";
+import { multipleApiHandler } from "@/utils/api/multiple.api";
 import { EnvConfig } from "@/utils/config/envConfig";
 import type { LoginFormData } from "@/utils/interface/auth.interface";
 import { validateSignInForm } from "@/utils/validation/auth.validation";
@@ -62,7 +62,7 @@ function LogInPage() {
   };
 
   const handleLoginApi = useDebounce(async (formData: LoginFormData) => {
-    const response = await multipleFetchApi([
+    const response = await multipleApiHandler([
       {
         endPoint: "/auth/login",
         data: formData,
@@ -83,7 +83,7 @@ function LogInPage() {
   }, 100);
 
   const handleSendResetPasswordApi = useDebounce(async () => {
-    const response = await multipleFetchApi([
+    const response = await multipleApiHandler([
       {
         endPoint: "/auth/forgot-password",
         method: "POST",

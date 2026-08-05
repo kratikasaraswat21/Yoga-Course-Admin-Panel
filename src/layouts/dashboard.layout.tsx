@@ -18,7 +18,7 @@ function DashboardLayout() {
       <div className="flex  min-h-0 min-w-0 flex-col overflow-hidden w-full">
         <DashboardNavbar />
 
-        <main className="dashboard-scroll-area min-h-0 min-w-0">
+        <main className="dashboard-scroll-area min-h-0 min-w-0 h-full overflow-y-auto">
           <Outlet />
         </main>
       </div>
