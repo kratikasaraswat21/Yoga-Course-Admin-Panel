@@ -19,6 +19,7 @@ import { toast } from "@/components/ui/variants/toast.manager";
 import { useDebounce } from "@/hooks/useDebounce";
 import { multipleApiHandler } from "@/utils/api/multiple.api";
 import { EnvConfig } from "@/utils/config/envConfig";
+import { ERROR_MESSAGES } from "@/utils/constants/error.constants";
 import type { LoginFormData } from "@/utils/interface/auth.interface";
 import { validateSignInForm } from "@/utils/validation/auth.validation";
 
@@ -73,7 +74,7 @@ function LogInPage() {
     const res = response[0];
 
     if (!res?.data?.success) {
-      toast.add({ title: res?.data?.message, type: "error", description: "" });
+      toast.add({ title: res?.data?.message ?? ERROR_MESSAGES.AUTH_REQUEST_FAILED, type: "error", description: "" });
     } else {
       setLoginSuccess(true);
       setSignature(res?.data?.data?.signature);
@@ -93,7 +94,7 @@ function LogInPage() {
     const res = response[0];
 
     if (!res?.data?.success) {
-      toast.add({ title: res?.data?.message, type: "error", description: "" });
+      toast.add({ title: res?.data?.message ?? ERROR_MESSAGES.AUTH_REQUEST_FAILED, type: "error", description: "" });
     } else {
       setShowForgotPasswordDialog(false);
       setShowResetEmailSuccessDialog(true);

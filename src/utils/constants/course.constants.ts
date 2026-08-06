@@ -14,11 +14,4 @@ export const EMPTY_COURSE_FORM: CourseFormData = {
   videoThumbnailName: "",
 };
 
-export const COURSE_ERROR_MESSAGES = {
-  TITLE_REQUIRED: "Please enter a course title.",
-  DESCRIPTION_REQUIRED: "Please enter a course description.",
-  PRICE_INVALID: "Price must be zero or greater.",
-  DISCOUNT_INVALID: "Discount must be between 0 and 100 percent.",
-} as const;
-
 export const COURSES_PER_PAGE = 5;

@@ -1,4 +1,5 @@
 import AuthRoutes from "@/router/auth.router";
+import AffiliateProductManagementPage from "@/modules/affiliate-product/affiliateProductManagement";
 import DashboardLayout from "@/layouts/dashboard.layout";
 import CourseEditorPage from "@/modules/course/courseEditor";
 import CourseManagementPage from "@/modules/course/courseManagement";
@@ -25,6 +26,9 @@ function RootLayout() {
           </Route>
           <Route path="/pdf-courses" element={<DashboardLayout />}>
             <Route index element={<PdfCourseManagementPage />} />
+          </Route>
+          <Route path="/affiliate-products" element={<DashboardLayout />}>
+            <Route index element={<AffiliateProductManagementPage />} />
           </Route>
         </Route>
         <Route path="*" element={<RedirectToDashboard />} />

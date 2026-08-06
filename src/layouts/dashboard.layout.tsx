@@ -1,22 +1,83 @@
-import { useState } from "react";
-import { Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Outlet, useNavigate } from "react-router-dom";
 
 import DashboardNavbar from "@/components/dashboard/navbar.component";
 import DashboardSidebar from "@/components/dashboard/sidebar.component";
+import { toast } from "@/components/ui/variants/toast.manager";
+import { useDebounce } from "@/hooks/useDebounce";
+import { multipleApiHandler } from "@/utils/api/multiple.api";
+import { ERROR_MESSAGES } from "@/utils/constants/error.constants";
+import { SUCCESS_MESSAGES } from "@/utils/constants/success.constants";
+import { clearLocalSessionStorage, getDataFromSecureCookie } from "@/utils/helper/helper";
+import { LoaderCircle } from "lucide-react";
 
 function DashboardLayout() {
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
+  const navigate = useNavigate();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-  const toggleSidebar = () => {
-    setIsSidebarExpanded((isExpanded) => !isExpanded);
-  };
+  const openSidebar = () => setIsSidebarOpen(true);
+  const closeSidebar = () => setIsSidebarOpen(false);
+
+  const fetchUserStatus = useDebounce(async () => {
+    try {
+      const token = getDataFromSecureCookie("authenticationToken");
+      if (!token) {
+        toast.add({
+          title: ERROR_MESSAGES.SESSION_EXPIRED_TITLE,
+          description: ERROR_MESSAGES.SESSION_EXPIRED_DESCRIPTION,
+          type: "error",
+        });
+        clearLocalSessionStorage();
+        navigate("/auth/login");
+        return;
+      }
+      const response = await multipleApiHandler([{ endPoint: "auth/verify/me", protected: true, method: "GET" }]);
+
+      const res = response[0];
+      if (!res?.data?.success) {
+        toast.add({
+          title: ERROR_MESSAGES.SESSION_EXPIRED_TITLE,
+          description: res?.data?.message ?? ERROR_MESSAGES.SESSION_EXPIRED_DESCRIPTION,
+          type: "error",
+        });
+        clearLocalSessionStorage();
+        navigate("/auth/login");
+        return;
+      }
+
+      setIsCheckingAuth(false);
+    } catch {
+      setIsCheckingAuth(false);
+      toast.add({
+        title: ERROR_MESSAGES.SESSION_VERIFY_TITLE,
+        description: ERROR_MESSAGES.SESSION_VERIFY_DESCRIPTION,
+        type: "error",
+      });
+    }
+  }, 100);
+
+  useEffect(() => {
+    fetchUserStatus();
+  }, []);
+
+  if (isCheckingAuth) {
+    return (
+      <div className="flex h-dvh w-full items-center justify-center bg-slate-100 text-slate-950">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <LoaderCircle aria-hidden="true" className="size-8 animate-spin text-slate-700" />
+          <p className="text-sm font-medium text-slate-600">{SUCCESS_MESSAGES.LOADING_DASHBOARD}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-dvh items-stretch w-full max-w-full overflow-hidden bg-slate-100 text-slate-950">
-      <DashboardSidebar isExpanded={isSidebarExpanded} onToggle={toggleSidebar} />
+      <DashboardSidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
 
       <div className="flex  min-h-0 min-w-0 flex-col overflow-hidden w-full">
-        <DashboardNavbar />
+        <DashboardNavbar onOpenSidebar={openSidebar} />
 
         <main className="dashboard-scroll-area min-h-0 min-w-0 h-full overflow-y-auto">
           <Outlet />

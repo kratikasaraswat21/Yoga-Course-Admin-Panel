@@ -26,6 +26,8 @@ import { toast } from "@/components/ui/variants/toast.manager";
 import { useDebounce } from "@/hooks/useDebounce";
 import { multipleApiHandler } from "@/utils/api/multiple.api";
 import { PDF_STATUSES } from "@/utils/constants/global.constants";
+import { ERROR_MESSAGES } from "@/utils/constants/error.constants";
+import { SUCCESS_MESSAGES } from "@/utils/constants/success.constants";
 import type {
   MediaSignature,
   PdfCourseFormData,
@@ -35,7 +37,7 @@ import type {
 } from "@/utils/interface/pdf-course.interface";
 import { validatePdfCourseForm, validatePdfFile, validatePdfThumbnail } from "@/utils/validation/pdf-course.validation";
 import axios from "axios";
-import { FileText, FileUp, ImageUp, LoaderCircle, X } from "lucide-react";
+import { FileText, FileUp, ImageUp, LoaderCircle, Percent, X } from "lucide-react";
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent } from "react";
 
 function UploadPdfCourseSidebar({
@@ -68,9 +70,42 @@ function UploadPdfCourseSidebar({
     [],
   );
 
-  const updateField = (field: keyof PdfCourseFormData, value: string) => {
+  const updateField = (field: keyof PdfCourseFormData, value: PdfCourseFormData[keyof PdfCourseFormData]) => {
     setFormData((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: undefined }));
+  };
+
+  const isFree = formData.isAvailableForFree;
+  const payableAmount = Math.max(0, formData.price - (formData.price * formData.discount) / 100);
+
+  const updatePrice = (value: string) => {
+    const price = Number(value) || 0;
+    setFormData((current) => ({
+      ...current,
+      price,
+      totalPayableAmount: Math.max(0, price - (price * current.discount) / 100),
+    }));
+    setErrors((current) => ({ ...current, price: undefined, totalPayableAmount: undefined }));
+  };
+
+  const updateDiscount = (value: string) => {
+    const discount = Number(value) || 0;
+    setFormData((current) => ({
+      ...current,
+      discount,
+      totalPayableAmount: Math.max(0, current.price - (current.price * discount) / 100),
+    }));
+    setErrors((current) => ({ ...current, discount: undefined, totalPayableAmount: undefined }));
+  };
+
+  const toggleFreeCourse = () => {
+    const nextIsFree = !isFree;
+    setFormData((current) => ({
+      ...current,
+      isAvailableForFree: nextIsFree,
+      totalPayableAmount: nextIsFree ? 0 : Math.max(0, current.price - (current.price * current.discount) / 100),
+    }));
+    setErrors((current) => ({ ...current, price: undefined, discount: undefined, totalPayableAmount: undefined }));
   };
   const selectThumbnail = (file?: File) => {
     if (!file) return;
@@ -112,7 +147,7 @@ function UploadPdfCourseSidebar({
     );
 
     const fileUrl = response.data.secure_url ?? response.data.url;
-    if (!fileUrl) throw new Error("Upload completed without a file URL.");
+    if (!fileUrl) throw new Error(ERROR_MESSAGES.PDF_FILE_URL_MISSING);
     return fileUrl;
   };
 
@@ -128,7 +163,7 @@ function UploadPdfCourseSidebar({
 
     const result = response[0];
     if (!result.ok || !result.data?.success || !result.data.data) {
-      throw new Error(result.data?.message ?? "Unable to sign the media.");
+      throw new Error(result.data?.message ?? ERROR_MESSAGES.MEDIA_SIGNATURE_FAILED);
     }
     return result.data.data as unknown as MediaSignature;
   };
@@ -156,11 +191,19 @@ function UploadPdfCourseSidebar({
 
     try {
       await toast.promise(uploadPromise, {
-        loading: { title: "Uploading media", description: "Signing and uploading your file...", type: "loading" },
-        success: { title: "Upload complete", description: "Your media was uploaded successfully.", type: "success" },
+        loading: {
+          title: SUCCESS_MESSAGES.MEDIA_UPLOAD_LOADING_TITLE,
+          description: SUCCESS_MESSAGES.MEDIA_UPLOAD_LOADING_DESCRIPTION,
+          type: "loading",
+        },
+        success: {
+          title: SUCCESS_MESSAGES.MEDIA_UPLOAD_COMPLETE_TITLE,
+          description: SUCCESS_MESSAGES.MEDIA_UPLOAD_COMPLETE_DESCRIPTION,
+          type: "success",
+        },
         error: (error) => ({
-          title: "Upload failed",
-          description: error instanceof Error ? error.message : "Unable to upload the media.",
+          title: ERROR_MESSAGES.MEDIA_UPLOAD_FAILED_TITLE,
+          description: error instanceof Error ? error.message : ERROR_MESSAGES.MEDIA_UPLOAD_FAILED_DESCRIPTION,
           type: "error",
         }),
       });
@@ -197,7 +240,11 @@ function UploadPdfCourseSidebar({
     ]);
 
     const res = response[0];
-    toast.add({ title: res?.data?.message, positionerProps: {}, type: res?.data?.success ? "success" : "error" });
+    toast.add({
+      title: res?.data?.message ?? (res?.data?.success ? SUCCESS_MESSAGES.PDF_COURSE_SAVED : ERROR_MESSAGES.PDF_COURSE_SAVE_FAILED),
+      positionerProps: {},
+      type: res?.data?.success ? "success" : "error",
+    });
     if (res?.data?.success) {
       setIsDrawerOpen(false);
       reFetchThePdfCourseData();
@@ -369,6 +416,44 @@ function UploadPdfCourseSidebar({
                   type="file"
                 />
                 {errors.thumbnailUrl && <p className="text-sm text-red-500">{errors.thumbnailUrl}</p>}
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <Label className="text-sm font-semibold" htmlFor="pdf-free-course">Available for free</Label>
+                    <p className="mt-1 text-xs text-slate-500">Students can access this course without payment.</p>
+                  </div>
+                  <button
+                    aria-checked={isFree}
+                    aria-label="Make PDF course free"
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${isFree ? "bg-slate-900" : "bg-slate-300"}`}
+                    id="pdf-free-course"
+                    onClick={toggleFreeCourse}
+                    role="switch"
+                    type="button">
+                    <span className={`absolute top-1 size-4 rounded-full bg-white transition-transform ${isFree ? "translate-x-6" : "translate-x-1"}`} />
+                  </button>
+                </div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="pdf-price">Price</Label>
+                  <Input aria-invalid={Boolean(errors.price)} className="h-11 bg-white" disabled={isFree} id="pdf-price" min="0" onChange={(e) => updatePrice(e.target.value)} type="number" value={formData.price || ""} />
+                  {errors.price && <p className="text-sm text-red-500">{errors.price}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pdf-discount">Discount</Label>
+                  <div className="relative">
+                    <Input aria-invalid={Boolean(errors.discount)} className="h-11 bg-white pr-10" disabled={isFree} id="pdf-discount" max="100" min="0" onChange={(e) => updateDiscount(e.target.value)} type="number" value={formData.discount || ""} />
+                    <Percent aria-hidden="true" className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-slate-400" />
+                  </div>
+                  {errors.discount && <p className="text-sm text-red-500">{errors.discount}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pdf-total-payable">Total payable</Label>
+                  <Input aria-invalid={Boolean(errors.totalPayableAmount)} className="h-11 bg-slate-100" disabled id="pdf-total-payable" value={isFree ? 0 : payableAmount} />
+                  {errors.totalPayableAmount && <p className="text-sm text-red-500">{errors.totalPayableAmount}</p>}
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="pdf-status">Status</Label>

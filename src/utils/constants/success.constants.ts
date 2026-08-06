@@ -1,0 +1,19 @@
+
+export const SUCCESS_MESSAGES = {
+  COURSE_CREATED_TITLE: "Course created",
+  COURSE_CREATED_DESCRIPTION: "The course was added to the mock catalogue.",
+  COURSE_UPDATED_TITLE: "Course updated",
+  COURSE_UPDATED_DESCRIPTION: "The course details were updated.",
+  COURSE_DELETED_TITLE: "Course deleted",
+  COURSE_DELETED_DESCRIPTION: "The course was removed from the mock list.",
+  MEDIA_UPLOAD_LOADING_TITLE: "Uploading media",
+  MEDIA_UPLOAD_LOADING_DESCRIPTION: "Signing and uploading your file...",
+  MEDIA_UPLOAD_COMPLETE_TITLE: "Upload complete",
+  MEDIA_UPLOAD_COMPLETE_DESCRIPTION: "Your media was uploaded successfully.",
+  ORDER_UPDATED: "Order updated",
+  LOGIN_SUCCESSFULLY: "Login successful",
+  REDIRECTING_TO_DASHBOARD: "Redirecting to the dashboard",
+  LOADING_DASHBOARD: "Loading your dashboard...",
+  PDF_COURSE_SAVED: "PDF course saved successfully.",
+  PDF_COURSE_DELETED: "PDF course deleted successfully.",
+} as const;

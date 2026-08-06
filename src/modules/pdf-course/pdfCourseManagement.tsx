@@ -21,7 +21,10 @@ import { useDebounce } from "@/hooks/useDebounce";
 import UploadPdfCourseSidebar from "@/modules/pdf-course/uploadPdfCourseSidebar";
 import { multipleApiHandler } from "@/utils/api/multiple.api";
 import { reorderPdfCourses } from "@/utils/api/pdf-course.api";
+import { ERROR_MESSAGES } from "@/utils/constants/error.constants";
 import { statusClassName } from "@/utils/constants/global.constants";
+import { SUCCESS_MESSAGES } from "@/utils/constants/success.constants";
+import { formatCoursePrice } from "@/utils/helper/course.helper";
 import { formatPdfDate } from "@/utils/helper/pdf-course.helper";
 import type {
   PdfCourse,
@@ -45,6 +48,10 @@ const EMPTY_FORM: PdfCourseFormData = {
   pdfFileName: "",
   fileUrl: "",
   thumbnailUrl: "",
+  price: 0,
+  discount: 0,
+  totalPayableAmount: 0,
+  isAvailableForFree: false,
   status: "DRAFT",
 };
 
@@ -88,6 +95,10 @@ function PdfCourseManagementPage() {
       pdfFileName: pdf.pdfFileName,
       fileUrl: pdf.fileUrl,
       thumbnailUrl: pdf.thumbnailUrl,
+      price: Number(pdf.price ?? 0),
+      discount: Number(pdf.discount ?? 0),
+      totalPayableAmount: Number(pdf.totalPayableAmount ?? 0),
+      isAvailableForFree: Boolean(pdf.isAvailableForFree),
       status: pdf.status,
     });
     setErrors({});
@@ -139,7 +150,12 @@ function PdfCourseManagementPage() {
       fetchPdfCourses();
     }
 
-    toast.add({ title: result?.data?.message, type: result?.data?.success ? "success" : "error" });
+    toast.add({
+      title:
+        result?.data?.message ??
+        (result?.data?.success ? SUCCESS_MESSAGES.PDF_COURSE_DELETED : ERROR_MESSAGES.PDF_COURSE_DELETE_FAILED),
+      type: result?.data?.success ? "success" : "error",
+    });
   }, 100);
 
   const reFetchThePdfCourseData = () => {
@@ -171,7 +187,7 @@ function PdfCourseManagementPage() {
       orderedIds: reorderedCourses.map((course) => course.id),
     });
     toast.add({
-      title: result?.data?.message ?? (result?.data?.success ? "Order updated" : "Unable to update order"),
+      title: result?.data?.message ?? (result?.data?.success ? SUCCESS_MESSAGES.ORDER_UPDATED : ERROR_MESSAGES.ORDER_UPDATE_FAILED),
       type: result?.data?.success ? "success" : "error",
     });
     if (!result?.data?.success) reFetchThePdfCourseData();
@@ -292,6 +308,33 @@ function PdfCourseManagementPage() {
                           </Button>
                         </ActionTooltip>
                       </div>
+                    </div>
+                    <div className="space-y-2 border-t pt-3 text-sm">
+                      {pdf.isAvailableForFree ? (
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-slate-500">Access</span>
+                          <span className="font-semibold text-emerald-600">Free</span>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-slate-500">Price</span>
+                            <span className="font-medium text-slate-700">{formatCoursePrice(Number(pdf.price ?? 0))}</span>
+                          </div>
+                          {Number(pdf.discount ?? 0) > 0 && (
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium text-slate-500">Discount</span>
+                              <span className="font-medium text-emerald-600">{Number(pdf.discount)}% off</span>
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between border-t border-dashed pt-2">
+                            <span className="font-semibold text-slate-700">Total payable</span>
+                            <span className="font-bold text-slate-900">
+                              {formatCoursePrice(Number(pdf.totalPayableAmount ?? 0))}
+                            </span>
+                          </div>
+                        </>
+                      )}
                     </div>
                     <div className="flex items-center justify-between gap-2 border-t pt-3 text-xs text-slate-500">
                       <span className="flex min-w-0 items-center gap-1.5 truncate" title={pdf.pdfFileName}>

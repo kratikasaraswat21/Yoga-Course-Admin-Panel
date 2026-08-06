@@ -1,4 +1,4 @@
-import { BookOpen, FileText, LayoutDashboard } from "lucide-react";
+import { BookOpen, FileText, Gift, LayoutDashboard } from "lucide-react";
 
 import type { DashboardNavigationItem } from "@/utils/interface/dashboard.interface";
 
@@ -17,5 +17,10 @@ export const DASHBOARD_NAVIGATION_ITEMS: DashboardNavigationItem[] = [
     icon: FileText,
     label: "PDF Course Manager",
     path: "/pdf-courses",
+  },
+  {
+    icon: Gift,
+    label: "Affiliate Products",
+    path: "/affiliate-products",
   },
 ];

@@ -11,7 +11,7 @@ function CoursePageHeader({ onAddCourse }: { onAddCourse: () => void }) {
           Create, organise, and manage the yoga courses available on the platform.
         </p>
       </div>
-      <Button className="h-11 shrink-0 gap-2 px-4" onClick={onAddCourse} type="button">
+      <Button className="h-11 w-full shrink-0 gap-2 px-4 sm:w-auto" onClick={onAddCourse} type="button">
         <Plus aria-hidden="true" />
         Add course
       </Button>

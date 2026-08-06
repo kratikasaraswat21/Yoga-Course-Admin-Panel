@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/components/ui/variants/toast.manager";
 import { calculatePayableAmount, getMockCourses, storeMockCourses } from "@/utils/helper/course.helper";
+import { ERROR_MESSAGES } from "@/utils/constants/error.constants";
+import { SUCCESS_MESSAGES } from "@/utils/constants/success.constants";
 import type { Course, CourseFormData } from "@/utils/interface/course.interface";
 
 function CourseEditorPage() {
@@ -44,8 +46,8 @@ function CourseEditorPage() {
 
     storeMockCourses(updatedCourses);
     toast.add({
-      description: course ? "The course details were updated." : "The course was added to the mock catalogue.",
-      title: course ? "Course updated" : "Course created",
+      description: course ? SUCCESS_MESSAGES.COURSE_UPDATED_DESCRIPTION : SUCCESS_MESSAGES.COURSE_CREATED_DESCRIPTION,
+      title: course ? SUCCESS_MESSAGES.COURSE_UPDATED_TITLE : SUCCESS_MESSAGES.COURSE_CREATED_TITLE,
       type: "success",
     });
     returnToCourseList();
@@ -58,8 +60,8 @@ function CourseEditorPage() {
           <div className="flex size-12 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
             <BookOpen aria-hidden="true" />
           </div>
-          <h2 className="mt-4 text-xl font-semibold">Course not found</h2>
-          <p className="mt-2 text-sm text-slate-500">The course may have been removed or the link is invalid.</p>
+          <h2 className="mt-4 text-xl font-semibold">{ERROR_MESSAGES.COURSE_NOT_FOUND_TITLE}</h2>
+          <p className="mt-2 text-sm text-slate-500">{ERROR_MESSAGES.COURSE_NOT_FOUND_DESCRIPTION}</p>
           <Button className="mt-6 h-11" onClick={returnToCourseList} type="button">
             Return to courses
           </Button>

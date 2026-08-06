@@ -1,13 +1,22 @@
-import { Bell, UserRound } from "lucide-react";
+import { Bell, Menu, UserRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { EnvConfig } from "@/utils/config/envConfig";
 import { getTimeBasedGreeting } from "@/utils/helper/dashboard.helper";
 
-function DashboardNavbar() {
+function DashboardNavbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
   return (
     <header className="sticky top-0 z-10 flex h-18 shrink-0 items-center justify-between border-b border-slate-200 bg-white/95 backdrop-blur px-4 lg:px-6 xl:px-8 w-full">
       <div className="flex items-center gap-3">
+        <Button
+          aria-label="Open navigation"
+          className="xl:hidden"
+          onClick={onOpenSidebar}
+          size="icon"
+          type="button"
+          variant="ghost">
+          <Menu aria-hidden="true" />
+        </Button>
         <div>
           <p className="text-xs font-medium text-slate-500">Welcome back</p>
           <h1 className="text-lg font-semibold">

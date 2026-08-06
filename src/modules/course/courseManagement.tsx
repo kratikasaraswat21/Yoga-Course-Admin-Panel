@@ -21,6 +21,7 @@ import { Pagination, PaginationContent, PaginationItem } from "@/components/ui/p
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/variants/toast.manager";
 import { COURSES_PER_PAGE, COURSE_STATUSES } from "@/utils/constants/course.constants";
+import { SUCCESS_MESSAGES } from "@/utils/constants/success.constants";
 import { getMockCourses, storeMockCourses } from "@/utils/helper/course.helper";
 import type { Course, CourseStatus } from "@/utils/interface/course.interface";
 
@@ -62,14 +63,14 @@ function CourseManagementPage() {
     setCourses(updatedCourses);
     storeMockCourses(updatedCourses);
     setCourseToDelete(null);
-    toast.add({ title: "Course deleted", description: "The course was removed from the mock list.", type: "success" });
+    toast.add({ title: SUCCESS_MESSAGES.COURSE_DELETED_TITLE, description: SUCCESS_MESSAGES.COURSE_DELETED_DESCRIPTION, type: "success" });
   };
 
   return (
     <section className="w-full h-full p-4 sm:p-6 lg:p-8 pb-25!">
       <CoursePageHeader onAddCourse={() => navigate("/course/add")} />
 
-      <Card className="gap-0 py-0">
+      <Card className="mt-4 gap-0 py-0 sm:mt-6">
         <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative w-full sm:max-w-sm">
             <Search aria-hidden="true" className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />

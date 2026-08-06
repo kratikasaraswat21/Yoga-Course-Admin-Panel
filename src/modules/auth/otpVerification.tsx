@@ -7,6 +7,8 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp
 import { toast } from "@/components/ui/variants/toast.manager";
 import { useDebounce } from "@/hooks/useDebounce";
 import { multipleApiHandler } from "@/utils/api/multiple.api";
+import { ERROR_MESSAGES } from "@/utils/constants/error.constants";
+import { SUCCESS_MESSAGES } from "@/utils/constants/success.constants";
 import { formatCountDownTime, getRemainingCountDownSeconds, storeDataInSecureCookie } from "@/utils/helper/helper";
 import type { OtpVerificationFormData } from "@/utils/interface/auth.interface";
 import { validateOtpVerificationForm } from "@/utils/validation/auth.validation";
@@ -39,7 +41,11 @@ function OTPVerificationPage() {
 
     const res = response[0];
     if (!res?.data?.success) {
-      toast.add({ title: res?.data?.message, type: "error", description: "" });
+      toast.add({
+        title: res?.data?.message ?? ERROR_MESSAGES.OTP_VERIFICATION_FAILED,
+        type: "error",
+        description: "",
+      });
     } else {
       storeDataInSecureCookie(res?.data?.data?.auth_token, "authenticationToken", true);
       navigate("/dashboard");
@@ -49,9 +55,9 @@ function OTPVerificationPage() {
         }),
 
         {
-          loading: "Login Successfully Successfully",
-          success: "",
-          error: "Redirecting to the Dashboard",
+          loading: SUCCESS_MESSAGES.LOGIN_SUCCESSFULLY,
+          success: SUCCESS_MESSAGES.LOGIN_SUCCESSFULLY,
+          error: SUCCESS_MESSAGES.REDIRECTING_TO_DASHBOARD,
         },
       );
     }
@@ -61,7 +67,7 @@ function OTPVerificationPage() {
     const signature = searchParam.get("signature");
 
     if (!signature) {
-      toast.add({ title: "Looks Like You Are Using the Broken Url", type: "error", description: "" });
+      toast.add({ title: ERROR_MESSAGES.BROKEN_URL, type: "error", description: "" });
     }
 
     const response = await multipleApiHandler([
@@ -73,7 +79,13 @@ function OTPVerificationPage() {
 
     const res = response[0];
 
-    toast.add({ title: res?.data?.message, type: res?.data?.success ? "success" : "error", description: "" });
+    toast.add({
+      title:
+        res?.data?.message ??
+        (res?.data?.success ? SUCCESS_MESSAGES.LOGIN_SUCCESSFULLY : ERROR_MESSAGES.OTP_RESEND_FAILED),
+      type: res?.data?.success ? "success" : "error",
+      description: "",
+    });
   }, 100);
 
   useEffect(() => {

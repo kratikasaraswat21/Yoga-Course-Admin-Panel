@@ -11,6 +11,10 @@ export interface PdfCourse {
   fileUrl: string;
   thumbnailName: string;
   thumbnailUrl: string;
+  price: number;
+  discount: number;
+  totalPayableAmount: number;
+  isAvailableForFree: boolean;
   status: PdfCourseStatus;
   updatedAt: string;
 }
@@ -21,6 +25,10 @@ export interface PdfCourseFormData {
   pdfFileName: string;
   fileUrl: string;
   thumbnailUrl: string;
+  price: number;
+  discount: number;
+  totalPayableAmount: number;
+  isAvailableForFree: boolean;
   status: PdfCourseStatus;
 }
 

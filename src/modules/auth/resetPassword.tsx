@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/variants/toast.manager";
 import { useDebounce } from "@/hooks/useDebounce";
 import { multipleApiHandler } from "@/utils/api/multiple.api";
+import { ERROR_MESSAGES } from "@/utils/constants/error.constants";
 import type { ResetPasswordFormData } from "@/utils/interface/auth.interface";
 import { validateResetPasswordForm } from "@/utils/validation/auth.validation";
 
@@ -54,7 +55,7 @@ function ResetPasswordPage() {
     const res = response[0];
 
     if (!res?.data?.success) {
-      toast.add({ title: res?.data?.message, type: "error", description: "" });
+      toast.add({ title: res?.data?.message ?? ERROR_MESSAGES.PASSWORD_RESET_FAILED, type: "error", description: "" });
     } else {
       setShowPasswordResetSuccessDialog(true);
     }
@@ -88,10 +89,9 @@ function ResetPasswordPage() {
         to="/auth/login"
         state={{
           toastNotification: {
-            title: "Invalid password reset link",
+            title: ERROR_MESSAGES.INVALID_PASSWORD_RESET_TITLE,
             type: "error",
-            description:
-              "This reset link is missing its security token. Redirecting you to the login page. please request a new password reset email. Using the forgot password",
+            description: ERROR_MESSAGES.INVALID_PASSWORD_RESET_DESCRIPTION,
           },
         }}
       />

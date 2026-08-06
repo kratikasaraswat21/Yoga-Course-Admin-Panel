@@ -5,8 +5,12 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "@/components/ui/variants/toast.manager";
+import { useDebounce } from "@/hooks/useDebounce";
 import { multipleApiHandler } from "@/utils/api/multiple.api";
+import { ERROR_MESSAGES } from "@/utils/constants/error.constants";
 import { statusClassName } from "@/utils/constants/global.constants";
+import { formatCoursePrice } from "@/utils/helper/course.helper";
 import type { PdfCourse } from "@/utils/interface/pdf-course.interface";
 
 function PdfCourseDashboardSection() {
@@ -14,25 +18,28 @@ function PdfCourseDashboardSection() {
   const [courses, setCourses] = useState<PdfCourse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    let isMounted = true;
+  const fetchPdfCourses = useDebounce(async () => {
+    try {
+      const response = await multipleApiHandler([{ endPoint: "/pdf-course/fetch", protected: true }]);
+      const result = response[0];
+      const fetchedCourses =
+        result?.data?.success && Array.isArray(result.data.data?.pdf_courses) ? result.data.data.pdf_courses : [];
+      setCourses(fetchedCourses);
 
-    const fetchPdfCourses = async () => {
-      try {
-        const response = await multipleApiHandler([{ endPoint: "/pdf-course/fetch", protected: true }]);
-        const result = response[0];
-        const fetchedCourses =
-          result?.data?.success && Array.isArray(result.data.data?.pdf_courses) ? result.data.data.pdf_courses : [];
-        if (isMounted) setCourses(fetchedCourses);
-      } finally {
-        if (isMounted) setIsLoading(false);
+      if (!result?.data?.success) {
+        toast.add({
+          title: ERROR_MESSAGES.PDF_COURSE_FETCH_FAILED,
+          description: ERROR_MESSAGES.PDF_COURSE_FETCH_FAILED,
+          type: "error",
+        });
       }
-    };
+    } finally {
+      setIsLoading(false);
+    }
+  });
 
+  useEffect(() => {
     fetchPdfCourses();
-    return () => {
-      isMounted = false;
-    };
   }, []);
 
   return (
@@ -73,6 +80,14 @@ function PdfCourseDashboardSection() {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-slate-900">{course.title}</p>
                 <p className="mt-1 truncate text-xs text-slate-500">{course.pdfFileName}</p>
+                <p
+                  className={
+                    course.isAvailableForFree
+                      ? "mt-1 text-xs font-semibold text-emerald-600"
+                      : "mt-1 text-xs font-semibold text-slate-700"
+                  }>
+                  {course.isAvailableForFree ? "Free" : formatCoursePrice(Number(course.price ?? 0))}
+                </p>
               </div>
               <span
                 className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold tracking-wide ring-1 ${statusClassName[course.status]}`}>
