@@ -16,6 +16,7 @@ import type { Course } from "@/utils/interface/course.interface";
 
 interface CourseTableProps {
   courses: Course[];
+  isLoading?: boolean;
   onDelete: (course: Course) => void;
   onEdit: (course: Course) => void;
 }
@@ -62,7 +63,31 @@ function EmptyCourseState() {
   );
 }
 
-function CourseTable({ courses, onDelete, onEdit }: CourseTableProps) {
+function CourseTableSkeleton() {
+  return (
+    <div className="animate-pulse">
+      <div className="hidden md:block">
+        <div className="grid grid-cols-8 gap-4 border-b bg-slate-50 px-5 py-3 text-xs font-medium text-slate-400">
+          {Array.from({ length: 8 }).map((_, index) => <span className="h-3 rounded bg-slate-200" key={index} />)}
+        </div>
+        {Array.from({ length: 5 }).map((_, index) => (
+          <div className="grid grid-cols-8 items-center gap-4 border-b px-5 py-5" key={index}>
+            <span className="col-span-1 h-10 rounded bg-slate-100" />
+            <span className="h-5 rounded bg-slate-100" /><span className="h-4 rounded bg-slate-100" />
+            <span className="h-4 rounded bg-slate-100" /><span className="h-4 rounded bg-slate-100" />
+            <span className="h-4 rounded bg-slate-100" /><span className="h-4 rounded bg-slate-100" /><span className="h-5 rounded bg-slate-100" />
+          </div>
+        ))}
+      </div>
+      <div className="grid gap-3 p-3 md:hidden">
+        {Array.from({ length: 3 }).map((_, index) => <div className="h-36 rounded-xl bg-slate-100" key={index} />)}
+      </div>
+    </div>
+  );
+}
+
+function CourseTable({ courses, isLoading = false, onDelete, onEdit }: CourseTableProps) {
+  if (isLoading) return <CourseTableSkeleton />;
   if (!courses.length) return <EmptyCourseState />;
 
   return (

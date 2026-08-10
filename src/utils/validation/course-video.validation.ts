@@ -7,7 +7,7 @@ export const validateCourseVideoConfiguration = (configuration: CourseVideoConfi
   const errors: CourseVideoConfigurationErrors = {};
 
   if (!configuration.formData.title.trim()) errors.title = ERROR_MESSAGES.COURSE_VIDEO_TITLE_REQUIRED;
-  if (configuration.formData.thumbnailType === "custom" && !configuration.formData.thumbnailUrl && !configuration.formData.thumbnailFile) {
+  if (!configuration.formData.thumbnailUrl && !configuration.formData.thumbnailFile) {
     errors.thumbnailFile = ERROR_MESSAGES.COURSE_VIDEO_THUMBNAIL_REQUIRED;
   }
 

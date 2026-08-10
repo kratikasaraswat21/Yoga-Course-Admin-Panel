@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 import { toast } from "@/components/ui/variants/toast.manager";
+import { useDebounce } from "@/hooks/useDebounce";
 import { multipleApiHandler, type CommonDataFormat } from "@/utils/api/multiple.api";
 import { ERROR_MESSAGES } from "@/utils/constants/error.constants";
 import { SUCCESS_MESSAGES } from "@/utils/constants/success.constants";
@@ -19,12 +20,16 @@ import type { AddCourseDetails } from "./add-course.types";
 function CourseDetailsStep({
   details,
   errors,
+  courseId,
+  onDetailsLoaded,
   onChange,
   onDismissInfo,
   showInfo,
 }: {
   details: AddCourseDetails;
   errors: AddCourseDetailsErrors;
+  courseId: string;
+  onDetailsLoaded: (details: AddCourseDetails) => void;
   onChange: (details: AddCourseDetails) => void;
   onDismissInfo: () => void;
   showInfo: boolean;
@@ -43,6 +48,31 @@ function CourseDetailsStep({
     onChange({ ...details, [key]: value });
 
   const handleThumbnailChange = (event: ChangeEvent<HTMLInputElement>) => setThumbnail(event.target.files?.[0]);
+
+  const fetchStepOneFormData = useDebounce(async (courseId: string) => {
+    const response = await multipleApiHandler([
+      {
+        endPoint: `/course/fetch/course/step-one/${courseId}`,
+        protected: true,
+        method: "GET",
+      },
+    ]);
+    const res = response[0];
+
+    if (res?.data?.success && res.data.data) {
+      const course = res.data.data.course ?? res.data.data;
+      const fetchedDetails: AddCourseDetails = {
+        description: String(course.description ?? ""),
+        discountPercentage: String(course.discountPercentage ?? course.discount ?? "0"),
+        price: String(course.price ?? "0"),
+        roundPayableAmount: Boolean(course.roundPayableAmount ?? course.roundOff ?? false),
+        thumbnailId: String(course.thumbnailId ?? ""),
+        thumbnailURL: String(course.thumbnailURL ?? course.thumbnailUrl ?? ""),
+        title: String(course.title ?? ""),
+      };
+      onDetailsLoaded(fetchedDetails);
+    }
+  }, 100);
 
   const setThumbnail = (file?: File) => {
     if (!file || !file.type.startsWith("image/")) return;
@@ -221,6 +251,16 @@ function CourseDetailsStep({
     })();
   }, [selectedImage]);
 
+  useEffect(() => {
+    const hasDetails = Object.entries(details).some(([key, value]) => {
+      if (key === "price" || key === "discountPercentage") return Number(value) > 0;
+      if (typeof value === "boolean") return value;
+      return String(value).trim().length > 0;
+    });
+
+    if (courseId && !hasDetails) fetchStepOneFormData(courseId);
+  }, [courseId, details, fetchStepOneFormData]);
+
   return (
     <>
       {showInfo && (
@@ -356,11 +396,11 @@ function CourseDetailsStep({
               onDragLeave={() => setIsDragging(false)}
               onDragOver={(event) => event.preventDefault()}
               onDrop={handleThumbnailDrop}>
-              {previewUrl ? (
+              {previewUrl || details?.thumbnailURL ? (
                 <img
                   alt="Course thumbnail preview"
                   className="absolute inset-0 size-full object-cover"
-                  src={previewUrl}
+                  src={previewUrl || details?.thumbnailURL}
                 />
               ) : (
                 <>
@@ -378,7 +418,7 @@ function CourseDetailsStep({
                 ref={fileInputRef}
                 type="file"
               />
-              {!previewUrl && (
+              {!(previewUrl || details?.thumbnailURL) && (
                 <Button
                   className={`relative z-10 h-10 mt-5 bg-white text-slate-900 shadow-none ring-1 ring-slate-200 hover:bg-slate-100`}
                   onClick={() => fileInputRef.current?.click()}
@@ -387,7 +427,7 @@ function CourseDetailsStep({
                   Choose file
                 </Button>
               )}
-              {previewUrl && (
+              {(previewUrl || details?.thumbnailURL) && (
                 <button
                   aria-label="Remove course thumbnail"
                   className="absolute top-3 right-3 z-10 flex size-9 items-center justify-center rounded-full bg-slate-950/90 text-white transition hover:bg-slate-950"
@@ -399,7 +439,7 @@ function CourseDetailsStep({
               )}
               {errors.thumbnailURL && <p className="mt-2 text-sm text-red-600">{errors.thumbnailURL}</p>}
             </div>
-            {selectedImage && (
+            {(selectedImage || details?.thumbnailURL) && (
               <>
                 {details?.thumbnailId?.length !== 0 ? (
                   <Button className="mt-4 h-11 w-full" onClick={removeThumbnail} type="button" variant="default">

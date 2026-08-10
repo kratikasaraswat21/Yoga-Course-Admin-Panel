@@ -13,10 +13,29 @@ export interface AddCourseDetails {
 
 export interface CourseVideo {
   id: string;
-  fileName: string;
+  cloudflareVideoUid?: string;
+  createdAt?: string;
+  dashUrl?: string;
+  description?: string;
+  durationSeconds?: number;
+  errorCode?: string | null;
+  errorMessage?: string | null;
+  fileSize?: string;
+  fileType?: string;
+  height?: number;
+  hlsUrl?: string;
+  isCustomThumbnail?: boolean;
+  originalFileName: string;
+  processingPercentage?: number;
+  readyToStream?: boolean;
+  sortOrder?: number;
   title: string;
   status: CourseVideoStatus;
-  durationSeconds?: number;
+  thumbnailId?: string;
+  thumbnailUrl?: string;
+  updatedAt?: string;
+  width?: number;
+  yogaCourseId?: string;
 }
 
 export interface CourseVideoConfiguration {
@@ -28,9 +47,9 @@ export interface CourseVideoConfiguration {
 export interface CourseVideoFormData {
   title: string;
   description: string;
-  thumbnailType: "automatic" | "custom";
+  thumbnailType: "custom";
   thumbnailUrl: string;
-  thumbnailUrlId: string;
+  thumbnailId: string;
   thumbnailFile?: File;
 }
 

@@ -8,9 +8,17 @@ const steps = [
   { number: 3, label: "Review & publish" },
 ] as const;
 
-function AddCourseStepper({ currentStep, onStepChange }: { currentStep: AddCourseStep; onStepChange: (step: AddCourseStep) => void }) {
+function AddCourseStepper({
+  currentStep,
+  onStepChange,
+}: {
+  currentStep: AddCourseStep;
+  onStepChange: (step: AddCourseStep) => void;
+}) {
   return (
-    <nav aria-label="Course creation progress" className="mx-auto grid w-full max-w-[1400px] grid-cols-[auto_minmax(48px,1fr)_auto_minmax(48px,1fr)_auto] items-center gap-3">
+    <nav
+      aria-label="Course creation progress"
+      className="mx-auto grid w-full max-w-350 grid-cols-[auto_minmax(48px,1fr)_auto_minmax(48px,1fr)_auto] items-center gap-3">
       {steps.map((step, index) => {
         const isCurrent = step.number === currentStep;
         const isComplete = step.number < currentStep;
@@ -35,7 +43,10 @@ function AddCourseStepper({ currentStep, onStepChange }: { currentStep: AddCours
                 }`}>
                 {isComplete ? <Check className="size-4" /> : step.number}
               </span>
-              <span className="hidden whitespace-nowrap sm:inline"><span className="block">{step.label}</span>{isComplete && <span className="mt-0.5 block text-xs font-normal text-slate-500">Completed</span>}</span>
+              <span className="hidden whitespace-nowrap sm:inline">
+                <span className="block">{step.label}</span>
+                {isComplete && <span className="mt-0.5 block text-xs font-normal text-slate-500">Completed</span>}
+              </span>
             </button>
             {index < steps.length - 1 && <span className="h-px min-w-12 bg-slate-200" />}
           </Fragment>

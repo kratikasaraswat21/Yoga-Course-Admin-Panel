@@ -1,5 +1,5 @@
 import { Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import CoursePageHeader from "@/components/course/course-page-header.component";
@@ -20,16 +20,20 @@ import { Input } from "@/components/ui/input";
 import { Pagination, PaginationContent, PaginationItem } from "@/components/ui/pagination";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/variants/toast.manager";
+import { useDebounce } from "@/hooks/useDebounce";
+import { multipleApiHandler } from "@/utils/api/multiple.api";
 import { COURSES_PER_PAGE, COURSE_STATUSES } from "@/utils/constants/course.constants";
 import { SUCCESS_MESSAGES } from "@/utils/constants/success.constants";
-import { getMockCourses, storeMockCourses } from "@/utils/helper/course.helper";
 import type { Course, CourseStatus } from "@/utils/interface/course.interface";
 
 type CourseStatusFilter = CourseStatus | "All";
 
 function CourseManagementPage() {
   const navigate = useNavigate();
-  const [courses, setCourses] = useState<Course[]>(getMockCourses);
+
+  const useEffectRef = useRef(false);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<CourseStatusFilter>("All");
   const [currentPage, setCurrentPage] = useState(1);
@@ -42,9 +46,7 @@ function CourseManagementPage() {
       const matchesStatus = statusFilter === "All" || course.status === statusFilter;
       const matchesSearch =
         !normalizedSearch ||
-        [course.title, course.description].some((value) =>
-          value.toLowerCase().includes(normalizedSearch),
-        );
+        [course.title, course.description].some((value) => value.toLowerCase().includes(normalizedSearch));
 
       return matchesStatus && matchesSearch;
     });
@@ -52,19 +54,65 @@ function CourseManagementPage() {
 
   const totalPages = Math.max(1, Math.ceil(filteredCourses.length / COURSES_PER_PAGE));
   const activePage = Math.min(currentPage, totalPages);
-  const visibleCourses = filteredCourses.slice(
-    (activePage - 1) * COURSES_PER_PAGE,
-    activePage * COURSES_PER_PAGE,
-  );
+  const visibleCourses = filteredCourses.slice((activePage - 1) * COURSES_PER_PAGE, activePage * COURSES_PER_PAGE);
 
   const handleDeleteCourse = () => {
     if (!courseToDelete) return;
     const updatedCourses = courses.filter((course) => course.id !== courseToDelete.id);
     setCourses(updatedCourses);
-    storeMockCourses(updatedCourses);
     setCourseToDelete(null);
-    toast.add({ title: SUCCESS_MESSAGES.COURSE_DELETED_TITLE, description: SUCCESS_MESSAGES.COURSE_DELETED_DESCRIPTION, type: "success" });
+    toast.add({
+      title: SUCCESS_MESSAGES.COURSE_DELETED_TITLE,
+      description: SUCCESS_MESSAGES.COURSE_DELETED_DESCRIPTION,
+      type: "success",
+    });
   };
+
+  const fetchAllTheCreatedCourse = useDebounce(async () => {
+    try {
+      const response = await multipleApiHandler([
+        { endPoint: "/course/fetch/all", method: "GET", protected: true },
+      ]);
+      const res = response[0];
+      const apiCourses = res?.data?.data?.courses;
+
+      if (!res?.data?.success || !Array.isArray(apiCourses)) {
+        throw new Error(res?.data?.message ?? "Unable to fetch courses.");
+      }
+
+      setCourses(apiCourses.map((course: Record<string, unknown>) => ({
+        id: String(course.id ?? ""),
+        title: String(course.title ?? "Untitled course"),
+        description: String(course.description ?? ""),
+        price: Number(course.price ?? 0),
+        discountPercentage: Number(course.discount ?? course.discountPercentage ?? 0),
+        payableAmount: Number(course.totalPayableAmount ?? course.payableAmount ?? 0),
+        roundPayableAmount: Boolean(course.roundPayableAmount),
+        status: String(course.status ?? "DRAFT").toLowerCase().replace(/^./, (letter) => letter.toUpperCase()) as CourseStatus,
+        students: Number(course.students ?? 0),
+        coverImageName: String(course.thumbnailId ?? ""),
+        videoFileName: "",
+        videoThumbnailMode: "custom",
+        videoThumbnailName: String(course.thumbnailId ?? ""),
+        updatedAt: String(course.updatedAt ?? course.createdAt ?? new Date().toISOString()),
+      })));
+    } catch (error) {
+      toast.add({
+        description: error instanceof Error ? error.message : "Unable to fetch courses.",
+        title: "Courses could not be loaded",
+        type: "error",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, 100);
+
+  useEffect(() => {
+    if (useEffectRef.current) return;
+    useEffectRef.current = true;
+
+    fetchAllTheCreatedCourse();
+  }, [fetchAllTheCreatedCourse]);
 
   return (
     <section className="w-full h-full p-4 sm:p-6 lg:p-8 pb-25!">
@@ -107,6 +155,7 @@ function CourseManagementPage() {
 
         <CourseTable
           courses={visibleCourses}
+          isLoading={isLoading}
           onDelete={setCourseToDelete}
           onEdit={(course) => navigate(`/course/edit?id=${course.id}`)}
         />

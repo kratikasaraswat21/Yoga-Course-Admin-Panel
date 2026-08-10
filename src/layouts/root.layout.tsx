@@ -22,6 +22,7 @@ function RootLayout() {
           <Route path="/course" element={<DashboardLayout />}>
             <Route index element={<CourseManagementPage />} />
             <Route path="add" element={<AddCoursePage />} />
+            <Route path="edit" element={<AddCoursePage />} />
           </Route>
           <Route path="/pdf-courses" element={<DashboardLayout />}>
             <Route index element={<PdfCourseManagementPage />} />
