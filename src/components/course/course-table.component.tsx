@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCourseDate, formatCoursePrice } from "@/utils/helper/course.helper";
+import { isValidUrl } from "@/utils/helper/helper";
 import type { Course } from "@/utils/interface/course.interface";
 
 interface CourseTableProps {
@@ -31,9 +32,7 @@ function CourseActions({ course, onDelete, onEdit }: CourseActionsProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        render={
-          <Button aria-label={`Actions for ${course.title}`} size="icon" type="button" variant="ghost" />
-        }>
+        render={<Button aria-label={`Actions for ${course.title}`} size="icon" type="button" variant="ghost" />}>
         <MoreHorizontal aria-hidden="true" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-40">
@@ -68,19 +67,27 @@ function CourseTableSkeleton() {
     <div className="animate-pulse">
       <div className="hidden md:block">
         <div className="grid grid-cols-8 gap-4 border-b bg-slate-50 px-5 py-3 text-xs font-medium text-slate-400">
-          {Array.from({ length: 8 }).map((_, index) => <span className="h-3 rounded bg-slate-200" key={index} />)}
+          {Array.from({ length: 8 }).map((_, index) => (
+            <span className="h-3 rounded bg-slate-200" key={index} />
+          ))}
         </div>
         {Array.from({ length: 5 }).map((_, index) => (
           <div className="grid grid-cols-8 items-center gap-4 border-b px-5 py-5" key={index}>
             <span className="col-span-1 h-10 rounded bg-slate-100" />
-            <span className="h-5 rounded bg-slate-100" /><span className="h-4 rounded bg-slate-100" />
-            <span className="h-4 rounded bg-slate-100" /><span className="h-4 rounded bg-slate-100" />
-            <span className="h-4 rounded bg-slate-100" /><span className="h-4 rounded bg-slate-100" /><span className="h-5 rounded bg-slate-100" />
+            <span className="h-5 rounded bg-slate-100" />
+            <span className="h-4 rounded bg-slate-100" />
+            <span className="h-4 rounded bg-slate-100" />
+            <span className="h-4 rounded bg-slate-100" />
+            <span className="h-4 rounded bg-slate-100" />
+            <span className="h-4 rounded bg-slate-100" />
+            <span className="h-5 rounded bg-slate-100" />
           </div>
         ))}
       </div>
       <div className="grid gap-3 p-3 md:hidden">
-        {Array.from({ length: 3 }).map((_, index) => <div className="h-36 rounded-xl bg-slate-100" key={index} />)}
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div className="h-36 rounded-xl bg-slate-100" key={index} />
+        ))}
       </div>
     </div>
   );
@@ -111,8 +118,16 @@ function CourseTable({ courses, isLoading = false, onDelete, onEdit }: CourseTab
               <TableRow key={course.id}>
                 <TableCell className="max-w-80 py-4 pl-5">
                   <div className="flex items-center gap-3">
-                    <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-slate-950 text-white">
-                      <BookOpen aria-hidden="true" className="size-5" />
+                    <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-950 text-white">
+                      {course.thumbnailUrl && isValidUrl(course.thumbnailUrl) ? (
+                        <img
+                          alt={`${course.title} thumbnail`}
+                          className="size-full object-cover"
+                          src={course.thumbnailUrl}
+                        />
+                      ) : (
+                        <BookOpen aria-hidden="true" className="size-5" />
+                      )}
                     </div>
                     <div className="min-w-0">
                       <p className="truncate font-medium">{course.title}</p>
@@ -142,8 +157,16 @@ function CourseTable({ courses, isLoading = false, onDelete, onEdit }: CourseTab
           <Card key={course.id}>
             <CardContent className="space-y-4">
               <div className="flex items-start gap-3">
-                <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-slate-950 text-white">
-                  <BookOpen aria-hidden="true" className="size-5" />
+                <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-950 text-white">
+                  {course.thumbnailUrl ? (
+                    <img
+                      alt={`${course.title} thumbnail`}
+                      className="size-full object-cover"
+                      src={course.thumbnailUrl}
+                    />
+                  ) : (
+                    <BookOpen aria-hidden="true" className="size-5" />
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="font-medium leading-5">{course.title}</p>

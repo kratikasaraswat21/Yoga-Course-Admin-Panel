@@ -13,6 +13,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { multipleApiHandler, type CommonDataFormat } from "@/utils/api/multiple.api";
 import { ERROR_MESSAGES } from "@/utils/constants/error.constants";
 import { SUCCESS_MESSAGES } from "@/utils/constants/success.constants";
+import { isValidUrl } from "@/utils/helper/helper";
 import type { CloudflareImageUploadResponse } from "@/utils/interface/global.interface";
 import type { AddCourseDetailsErrors } from "@/utils/validation/course.validation";
 import type { AddCourseDetails } from "./add-course.types";
@@ -25,6 +26,7 @@ function CourseDetailsStep({
   onChange,
   onDismissInfo,
   showInfo,
+  isEditing,
 }: {
   details: AddCourseDetails;
   errors: AddCourseDetailsErrors;
@@ -33,6 +35,7 @@ function CourseDetailsStep({
   onChange: (details: AddCourseDetails) => void;
   onDismissInfo: () => void;
   showInfo: boolean;
+  isEditing: boolean;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -101,7 +104,7 @@ function CourseDetailsStep({
       throw new Error(res?.data?.message ?? ERROR_MESSAGES.COURSE_THUMBNAIL_UPLOAD_URL_FAILED);
     }
 
-    onChange({ ...details, thumbnailId: "" });
+    onChange({ ...details, thumbnailId: "", thumbnailURL: "" });
   };
 
   const removeThumbnail = () => {
@@ -269,7 +272,10 @@ function CourseDetailsStep({
             <div className="flex items-center gap-2">
               <Info className="size-5 shrink-0" />
               <span>
-                <strong>Let's create your first course.</strong> Start with the basic details—videos can be added next.
+                <strong>{isEditing ? "Update your course details." : "Let's create your first course."}</strong>{" "}
+                {isEditing
+                  ? "Make your changes and continue through the same course setup steps."
+                  : "Start with the basic details—videos can be added next."}
               </span>
             </div>
             <button
@@ -396,7 +402,7 @@ function CourseDetailsStep({
               onDragLeave={() => setIsDragging(false)}
               onDragOver={(event) => event.preventDefault()}
               onDrop={handleThumbnailDrop}>
-              {previewUrl || details?.thumbnailURL ? (
+              {selectedImage || isValidUrl(details?.thumbnailURL) ? (
                 <img
                   alt="Course thumbnail preview"
                   className="absolute inset-0 size-full object-cover"
@@ -418,7 +424,7 @@ function CourseDetailsStep({
                 ref={fileInputRef}
                 type="file"
               />
-              {!(previewUrl || details?.thumbnailURL) && (
+              {!(selectedImage || isValidUrl(details?.thumbnailURL)) && (
                 <Button
                   className={`relative z-10 h-10 mt-5 bg-white text-slate-900 shadow-none ring-1 ring-slate-200 hover:bg-slate-100`}
                   onClick={() => fileInputRef.current?.click()}
@@ -427,7 +433,7 @@ function CourseDetailsStep({
                   Choose file
                 </Button>
               )}
-              {(previewUrl || details?.thumbnailURL) && (
+              {(selectedImage || isValidUrl(details?.thumbnailURL)) && (
                 <button
                   aria-label="Remove course thumbnail"
                   className="absolute top-3 right-3 z-10 flex size-9 items-center justify-center rounded-full bg-slate-950/90 text-white transition hover:bg-slate-950"
@@ -439,7 +445,7 @@ function CourseDetailsStep({
               )}
               {errors.thumbnailURL && <p className="mt-2 text-sm text-red-600">{errors.thumbnailURL}</p>}
             </div>
-            {(selectedImage || details?.thumbnailURL) && (
+            {(selectedImage || isValidUrl(details?.thumbnailURL)) && (
               <>
                 {details?.thumbnailId?.length !== 0 ? (
                   <Button className="mt-4 h-11 w-full" onClick={removeThumbnail} type="button" variant="default">

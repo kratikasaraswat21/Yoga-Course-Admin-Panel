@@ -39,6 +39,7 @@ function AddCoursePage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const urlCourseId = searchParams.get("courseId") ?? searchParams.get("id") ?? "";
+  const isEditing = Boolean(urlCourseId);
   const urlStep = Number(searchParams.get("step"));
   const stepFromUrl: AddCourseStep | null = urlStep === 1 || urlStep === 2 || urlStep === 3 ? urlStep : null;
   const [draft, setDraft] = useState<AddCourseDraft>(() => {
@@ -120,7 +121,7 @@ function AddCoursePage() {
         toast.add({
           title: ERROR_MESSAGES.COURSE_DRAFT_SAVE_FAILED_TITLE,
           description: ERROR_MESSAGES.COURSE_DRAFT_SAVE_FAILED_DESCRIPTION,
-        type: "error",
+          type: "error",
         });
         return false;
       }
@@ -155,6 +156,8 @@ function AddCoursePage() {
     clearAddCourseDraft();
     navigate("/course");
   };
+
+
   const handleCancel = () => {
     const hasCourseDetails = Object.entries(draft.details).some(([key, value]) => {
       if (key === "price" || key === "discountPercentage") return Number(value) > 0;
@@ -265,7 +268,7 @@ function AddCoursePage() {
       <header className="border-b border-slate-200 px-4 py-5 sm:px-6 lg:px-10">
         <div className="mx-auto max-w-[1580px]">
           <div className="flex items-center justify-between gap-4">
-            <h1 className="text-xl font-bold tracking-tight">Add course</h1>
+            <h1 className="text-xl font-bold tracking-tight">{isEditing ? "Edit course" : "Add course"}</h1>
             {draft.courseId && (
               <span className="rounded-lg border bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700">
                 Course ID: {draft.courseId}
@@ -283,6 +286,7 @@ function AddCoursePage() {
             courseId={draft.courseId}
             details={draft.details}
             errors={errors}
+            isEditing={isEditing}
             onDetailsLoaded={(details) => {
               setDraft((current) => ({ ...current, details }));
               setSavedStepOneDetails(details);
@@ -352,7 +356,9 @@ function AddCoursePage() {
           }}>
           <AlertDialogHeader>
             <div className="flex items-center justify-between w-full">
-              <span className="pr-10 text-xl font-semibold">Leave course creation?</span>
+              <span className="pr-10 text-xl font-semibold">
+                {isEditing ? "Leave course editing?" : "Leave course creation?"}
+              </span>
               <button
                 aria-label="Close confirmation"
                 className="flex size-9 items-center justify-center rounded-lg bg-slate-950 text-white transition hover:bg-slate-800"
@@ -362,8 +368,9 @@ function AddCoursePage() {
               </button>
             </div>
             <AlertDialogDescription className="text-base leading-6 pt-7">
-              All the information you have entered will be lost if you cancel and discard this course. You can save it
-              as a draft and continue later.
+              {isEditing
+                ? "Your unsaved changes will be lost if you cancel and discard this edit."
+                : "All the information you have entered will be lost if you cancel and discard this course. You can save it as a draft and continue later."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="w-full flex flex-row justify-end gap-3 m-0! px-0! pt-6! pb-0!">

@@ -91,6 +91,7 @@ function CourseManagementPage() {
         status: String(course.status ?? "DRAFT").toLowerCase().replace(/^./, (letter) => letter.toUpperCase()) as CourseStatus,
         students: Number(course.students ?? 0),
         coverImageName: String(course.thumbnailId ?? ""),
+        thumbnailUrl: String(course.thumbnailURL ?? course.thumbnailUrl ?? course.thumbnail_url ?? ""),
         videoFileName: "",
         videoThumbnailMode: "custom",
         videoThumbnailName: String(course.thumbnailId ?? ""),
