@@ -5,7 +5,7 @@ import { getDataFromSecureCookie } from "@/utils/helper/helper";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
-export type ApiMethod = "GET" | "POST" | "PUT" | "DELETE";
+export type ApiMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
 
 export interface EndpointObject {
   endPoint: string;

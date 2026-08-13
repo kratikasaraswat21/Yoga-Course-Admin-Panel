@@ -73,3 +73,17 @@ export const formatCountDownTime = (seconds: number) => {
 
   return `${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
 };
+
+export const isValidUrl = (value: string) => {
+  if (typeof value !== "string" || !value.trim()) {
+    return false;
+  }
+
+  try {
+    const url = new URL(value.trim());
+
+    return ["http:", "https:"].includes(url.protocol);
+  } catch {
+    return false;
+  }
+};

@@ -12,6 +12,7 @@ export interface Course {
   status: CourseStatus;
   students: number;
   coverImageName: string;
+  thumbnailUrl?: string;
   videoFileName: string;
   videoThumbnailMode: VideoThumbnailMode;
   videoThumbnailName: string;
