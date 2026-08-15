@@ -11,6 +11,10 @@ export interface Course {
   roundPayableAmount: boolean;
   status: CourseStatus;
   students: number;
+  /** API listing fields */
+  averageRating?: number;
+  totalEnrolledStudents?: number;
+  videoCount?: number;
   coverImageName: string;
   thumbnailUrl?: string;
   videoFileName: string;

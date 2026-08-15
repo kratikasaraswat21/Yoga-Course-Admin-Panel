@@ -22,8 +22,14 @@ function PdfCourseDashboardSection() {
     try {
       const response = await multipleApiHandler([{ endPoint: "/pdf-course/fetch", protected: true }]);
       const result = response[0];
-      const fetchedCourses =
-        result?.data?.success && Array.isArray(result.data.data?.pdf_courses) ? result.data.data.pdf_courses : [];
+      const responseData = result?.data?.data;
+      const fetchedCourses = result?.data?.success
+        ? Array.isArray(responseData?.pdfCourses)
+          ? responseData.pdfCourses
+          : Array.isArray(responseData?.pdf_courses)
+            ? responseData.pdf_courses
+            : []
+        : [];
       setCourses(fetchedCourses);
 
       if (!result?.data?.success) {

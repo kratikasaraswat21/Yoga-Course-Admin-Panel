@@ -1,4 +1,4 @@
-import { BookOpen, MoreHorizontal, Pencil, Percent, Trash2, Users } from "lucide-react";
+import { BookOpen, MoreHorizontal, Pencil, Percent, Send, Star, Trash2, Users, Video } from "lucide-react";
 
 import CourseStatusBadge from "@/components/course/course-status-badge.component";
 import { Button } from "@/components/ui/button";
@@ -20,31 +20,49 @@ interface CourseTableProps {
   isLoading?: boolean;
   onDelete: (course: Course) => void;
   onEdit: (course: Course) => void;
+  onPublish: (course: Course) => void;
 }
 
 interface CourseActionsProps {
   course: Course;
   onDelete: (course: Course) => void;
   onEdit: (course: Course) => void;
+  onPublish: (course: Course) => void;
 }
 
-function CourseActions({ course, onDelete, onEdit }: CourseActionsProps) {
+function CourseActions({ course, onDelete, onEdit, onPublish }: CourseActionsProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         render={<Button aria-label={`Actions for ${course.title}`} size="icon" type="button" variant="ghost" />}>
         <MoreHorizontal aria-hidden="true" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-40">
-        <DropdownMenuItem className="cursor-pointer" onClick={() => onEdit(course)}>
-          <Pencil aria-hidden="true" />
+      <DropdownMenuContent align="end" className="w-52 rounded-xl border border-slate-200/80 p-1.5 shadow-lg">
+        <DropdownMenuItem
+          className="h-9 cursor-pointer gap-2 px-3 text-slate-700 hover:bg-slate-100 focus:bg-slate-100"
+          onClick={() => onEdit(course)}>
+          <Pencil aria-hidden="true" className="size-4 text-slate-500" />
           Edit course
         </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem className="cursor-pointer" onClick={() => onDelete(course)} variant="destructive">
-          <Trash2 aria-hidden="true" />
-          Delete course
+        <DropdownMenuItem
+          className="h-9 cursor-pointer gap-2 px-3 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 focus:bg-emerald-50 focus:text-emerald-700"
+          disabled={course.status === "Published"}
+          onClick={() => onPublish(course)}>
+          <Send aria-hidden="true" className="size-4 text-emerald-600" />
+          {course.status === "Published" ? "Published" : "Publish course"}
         </DropdownMenuItem>
+        {(course.totalEnrolledStudents ?? course.students) === 0 && (
+          <>
+            <DropdownMenuSeparator className="my-1.5 bg-slate-200" />
+            <DropdownMenuItem
+              className="h-9 cursor-pointer gap-2 px-3 text-red-600 hover:bg-red-50 focus:bg-red-50 focus:text-red-700"
+              onClick={() => onDelete(course)}
+              variant="destructive">
+              <Trash2 aria-hidden="true" className="size-4" />
+              Delete course
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -93,7 +111,7 @@ function CourseTableSkeleton() {
   );
 }
 
-function CourseTable({ courses, isLoading = false, onDelete, onEdit }: CourseTableProps) {
+function CourseTable({ courses, isLoading = false, onDelete, onEdit, onPublish }: CourseTableProps) {
   if (isLoading) return <CourseTableSkeleton />;
   if (!courses.length) return <EmptyCourseState />;
 
@@ -105,7 +123,9 @@ function CourseTable({ courses, isLoading = false, onDelete, onEdit }: CourseTab
             <TableRow className="bg-slate-50 hover:bg-slate-50">
               <TableHead className="pl-5">Course</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Students</TableHead>
+              <TableHead>Enrolled</TableHead>
+              <TableHead>Rating</TableHead>
+              <TableHead>Videos</TableHead>
               <TableHead>Price</TableHead>
               <TableHead>Discount</TableHead>
               <TableHead>Payable</TableHead>
@@ -138,13 +158,20 @@ function CourseTable({ courses, isLoading = false, onDelete, onEdit }: CourseTab
                 <TableCell>
                   <CourseStatusBadge status={course.status} />
                 </TableCell>
-                <TableCell>{course.students.toLocaleString("en-IN")}</TableCell>
+                <TableCell>{(course.totalEnrolledStudents ?? course.students).toLocaleString("en-IN")}</TableCell>
+                <TableCell>
+                  <span className="inline-flex items-center gap-1">
+                    <Star aria-hidden="true" className="size-3.5 fill-amber-400 text-amber-400" />
+                    {course.averageRating ? course.averageRating.toFixed(1) : "—"}
+                  </span>
+                </TableCell>
+                <TableCell>{course.videoCount ?? 0}</TableCell>
                 <TableCell>{formatCoursePrice(course.price)}</TableCell>
                 <TableCell>{course.discountPercentage}%</TableCell>
                 <TableCell className="font-medium">{formatCoursePrice(course.payableAmount)}</TableCell>
                 <TableCell className="text-slate-500">{formatCourseDate(course.updatedAt)}</TableCell>
                 <TableCell className="pr-4 text-right">
-                  <CourseActions course={course} onDelete={onDelete} onEdit={onEdit} />
+                  <CourseActions course={course} onDelete={onDelete} onEdit={onEdit} onPublish={onPublish} />
                 </TableCell>
               </TableRow>
             ))}
@@ -172,11 +199,15 @@ function CourseTable({ courses, isLoading = false, onDelete, onEdit }: CourseTab
                   <p className="font-medium leading-5">{course.title}</p>
                   <p className="mt-1 line-clamp-1 text-xs text-slate-500">{course.description}</p>
                 </div>
-                <CourseActions course={course} onDelete={onDelete} onEdit={onEdit} />
+                <CourseActions course={course} onDelete={onDelete} onEdit={onEdit} onPublish={onPublish} />
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
                 <CourseStatusBadge status={course.status} />
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-xs text-amber-700">
+                  <Star aria-hidden="true" className="size-3.5 fill-amber-400 text-amber-400" />
+                  {course.averageRating ? course.averageRating.toFixed(1) : "—"}
+                </span>
                 {course.discountPercentage > 0 && (
                   <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs text-emerald-700">
                     {course.discountPercentage}% off
@@ -186,7 +217,10 @@ function CourseTable({ courses, isLoading = false, onDelete, onEdit }: CourseTab
 
               <div className="grid grid-cols-3 gap-2 border-t pt-3 text-xs text-slate-500">
                 <span className="flex items-center gap-1">
-                  <Users aria-hidden="true" className="size-3.5" /> {course.students}
+                  <Users aria-hidden="true" className="size-3.5" /> {course.totalEnrolledStudents ?? course.students}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Video aria-hidden="true" className="size-3.5" /> {course.videoCount ?? 0}
                 </span>
                 <span className="flex items-center gap-1">
                   <Percent aria-hidden="true" className="size-3.5" /> {course.discountPercentage}%

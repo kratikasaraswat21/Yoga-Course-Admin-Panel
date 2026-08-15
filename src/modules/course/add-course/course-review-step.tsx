@@ -1,6 +1,7 @@
 import { CheckCircle2, Play, X } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/variants/toast.manager";
 import { useDebounce } from "@/hooks/useDebounce";
 import { multipleApiHandler } from "@/utils/api/multiple.api";
@@ -17,7 +18,17 @@ const ReadyStatus = () => (
 const formatDuration = (seconds = 0) =>
   `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, "0")}`;
 
-function CourseReviewStep({ videos, courseId }: { videos: CourseVideo[]; courseId: string }) {
+function CourseReviewStep({
+  videos,
+  courseId,
+  isPublishing,
+  onPublish,
+}: {
+  videos: CourseVideo[];
+  courseId: string;
+  isPublishing: boolean;
+  onPublish: () => void;
+}) {
   const useEffectRef = useRef(false);
   const [course, setCourse] = useState<Record<string, unknown> | null>(null);
   const [showReviewNotice, setShowReviewNotice] = useState(true);
@@ -66,13 +77,18 @@ function CourseReviewStep({ videos, courseId }: { videos: CourseVideo[]; courseI
           <div className="flex items-center gap-3">
             <CheckCircle2 className="size-5 text-emerald-700" /> All good! Review the details and publish your course.
           </div>
-          <button
-            aria-label="Dismiss review message"
-            className="rounded-md p-1 text-emerald-700 transition hover:bg-emerald-100"
-            onClick={() => setShowReviewNotice(false)}
-            type="button">
-            <X className="size-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <Button className="h-8 px-3 text-xs" disabled={isPublishing} onClick={onPublish} type="button">
+              {isPublishing ? "Publishing..." : "Publish"}
+            </Button>
+            <button
+              aria-label="Dismiss review message"
+              className="rounded-md p-1 text-emerald-700 transition hover:bg-emerald-100"
+              onClick={() => setShowReviewNotice(false)}
+              type="button">
+              <X className="size-4" />
+            </button>
+          </div>
         </div>
       )}
       <div className="grid gap-5 lg:grid-cols-2">
