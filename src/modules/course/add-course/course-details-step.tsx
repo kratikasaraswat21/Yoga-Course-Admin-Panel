@@ -18,6 +18,8 @@ import type { CloudflareImageUploadResponse } from "@/utils/interface/global.int
 import type { AddCourseDetailsErrors } from "@/utils/validation/course.validation";
 import type { AddCourseDetails } from "./add-course.types";
 
+const normalizePriceInput = (value: string) => value.replace(/^0+(?=\d)/, "");
+
 function CourseDetailsStep({
   details,
   errors,
@@ -328,7 +330,7 @@ function CourseDetailsStep({
                   className="h-10 bg-white"
                   id="course-price"
                   min="0"
-                  onChange={(event) => update("price", event.target.value.replace(/[^\d.]/g, ""))}
+                  onChange={(event) => update("price", normalizePriceInput(event.target.value.replace(/[^\d.]/g, "")))}
                   type="number"
                   value={details.price}
                 />

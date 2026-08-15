@@ -496,7 +496,7 @@ function UploadPdfCourseSidebar({
       </Drawer>
 
       <AlertDialog open={Boolean(pendingUpload)} onOpenChange={(open) => !open && cancelPendingUpload()}>
-        <AlertDialogContent className="min-h-90 max-w-md gap-6 p-6">
+        <AlertDialogContent className="min-h-90 min-w-0 max-w-[calc(100%-2rem)] gap-6 overflow-hidden p-6 sm:max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle className={"text-xl"}>
               {pendingUpload?.type === "thumbnail" ? "Upload thumbnail" : "Upload PDF"}
@@ -517,17 +517,19 @@ function UploadPdfCourseSidebar({
               </p>
             </div>
           ) : (
-            <div className="flex items-center gap-3 rounded-xl border bg-slate-50 p-4">
+            <div className="flex min-w-0 max-w-full items-center gap-3 overflow-hidden rounded-xl border bg-slate-50 p-4">
               <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-white text-rose-500 shadow-sm ring-1 ring-slate-200">
                 <FileText className="size-6" />
               </span>
               <div className="min-w-0">
-                <p className="text-sm font-medium">{pendingUpload?.file.name}</p>
+                <p className="truncate text-sm font-medium" title={pendingUpload?.file.name}>
+                  {pendingUpload?.file.name}
+                </p>
                 <p className="mt-1 text-xs text-slate-500">PDF file selected</p>
               </div>
             </div>
           )}
-          <AlertDialogFooter className="-mx-6 -mb-6 px-6 ">
+          <AlertDialogFooter className="-mx-6 -mb-6 flex-wrap px-6">
             <AlertDialogCancel className="h-12 px-6" onClick={cancelPendingUpload}>
               Cancel
             </AlertDialogCancel>

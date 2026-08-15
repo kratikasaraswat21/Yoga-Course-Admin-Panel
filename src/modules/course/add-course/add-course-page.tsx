@@ -235,7 +235,7 @@ function AddCoursePage() {
     handelSaveMoveToNextStep();
   };
 
-  const publishCourseFunction = useDebounce(async (course_id: string) => {
+  const publishCourseFunction = useDebounce(async (course_id: string, courseTitle: string) => {
     try {
       const response = await multipleApiHandler([
         {
@@ -247,20 +247,30 @@ function AddCoursePage() {
 
       const res = response[0];
 
-      toast.add({ title: res?.data?.message, type: res?.data?.success ? "success" : "error" });
+      toast.add({
+        title: res?.data?.success ? `${courseTitle} published` : `${courseTitle} Unable to publish`,
+        description: res?.data?.message ?? (res?.data?.success ? "The course is now live." : "Please try again."),
+        type: res?.data?.success ? "success" : "error",
+      });
 
       if (res?.data?.success) {
         navigate("/course");
       }
+    } catch {
+      toast.add({
+        title: `${courseTitle} Unable to publish`,
+        description: "Please check your connection and try again.",
+        type: "error",
+      });
     } finally {
       setIsPublishing(false);
     }
   }, 100);
 
-  const handelPublishCourse = (courseId: string) => {
+  const handelPublishCourse = (courseId: string, courseTitle = draft.details.title.trim() || "Course") => {
     if (!courseId || isPublishing) return;
     setIsPublishing(true);
-    publishCourseFunction(courseId);
+    publishCourseFunction(courseId, courseTitle);
   };
 
   return (
@@ -301,7 +311,12 @@ function AddCoursePage() {
         ) : currentStep === 2 ? (
           <CourseVideosStep courseId={draft?.courseId} videos={draft.videos} onVideosChange={handleVideosChange} />
         ) : (
-          <CourseReviewStep videos={draft.videos} courseId={draft?.courseId} />
+          <CourseReviewStep
+            videos={draft.videos}
+            courseId={draft?.courseId}
+            isPublishing={isPublishing}
+            onPublish={() => handelPublishCourse(draft.courseId)}
+          />
         )}
       </main>
       <footer className="sticky bottom-0 flex items-center justify-between border-t border-slate-200 bg-white px-4 py-4 sm:px-6 lg:px-10">

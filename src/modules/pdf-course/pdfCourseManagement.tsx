@@ -127,8 +127,14 @@ function PdfCourseManagementPage() {
       },
     ]);
     const result = response[0];
-    const courses =
-      result?.data?.success && Array.isArray(result.data.data?.pdf_courses) ? result.data.data.pdf_courses : [];
+    const responseData = result?.data?.data;
+    const courses = result?.data?.success
+      ? Array.isArray(responseData?.pdfCourses)
+        ? responseData.pdfCourses
+        : Array.isArray(responseData?.pdf_courses)
+          ? responseData.pdf_courses
+          : []
+      : [];
 
     setPdfCourses(courses);
     if (result?.data?.success) {

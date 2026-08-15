@@ -23,7 +23,6 @@ import { toast } from "@/components/ui/variants/toast.manager";
 import { useDebounce } from "@/hooks/useDebounce";
 import { multipleApiHandler } from "@/utils/api/multiple.api";
 import { COURSES_PER_PAGE, COURSE_STATUSES } from "@/utils/constants/course.constants";
-import { SUCCESS_MESSAGES } from "@/utils/constants/success.constants";
 import type { Course, CourseStatus } from "@/utils/interface/course.interface";
 
 type CourseStatusFilter = CourseStatus | "All";
@@ -38,6 +37,8 @@ function CourseManagementPage() {
   const [statusFilter, setStatusFilter] = useState<CourseStatusFilter>("All");
   const [currentPage, setCurrentPage] = useState(1);
   const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
+  const [deletingCourseId, setDeletingCourseId] = useState<string | null>(null);
+  const [publishingCourseId, setPublishingCourseId] = useState<string | null>(null);
 
   const filteredCourses = useMemo(() => {
     const normalizedSearch = searchQuery.trim().toLowerCase();
@@ -56,23 +57,85 @@ function CourseManagementPage() {
   const activePage = Math.min(currentPage, totalPages);
   const visibleCourses = filteredCourses.slice((activePage - 1) * COURSES_PER_PAGE, activePage * COURSES_PER_PAGE);
 
-  const handleDeleteCourse = () => {
+  const handleDeleteCourse = async () => {
     if (!courseToDelete) return;
-    const updatedCourses = courses.filter((course) => course.id !== courseToDelete.id);
-    setCourses(updatedCourses);
-    setCourseToDelete(null);
-    toast.add({
-      title: SUCCESS_MESSAGES.COURSE_DELETED_TITLE,
-      description: SUCCESS_MESSAGES.COURSE_DELETED_DESCRIPTION,
-      type: "success",
-    });
+    const course = courseToDelete;
+    setDeletingCourseId(course.id);
+
+    try {
+      const response = await multipleApiHandler([
+        { endPoint: `/course/delete/${course.id}`, method: "DELETE", protected: true },
+      ]);
+      const res = response[0];
+
+      if (!res?.data?.success) {
+        toast.add({
+          title: `${course.title} Unable to delete`,
+          description: res?.data?.message ?? "Please try again.",
+          type: "error",
+        });
+        return;
+      }
+
+      setCourses((current) => current.filter((item) => item.id !== course.id));
+      setCourseToDelete(null);
+      toast.add({
+        title: `${course.title} deleted`,
+        description: res.data.message ?? "The course was deleted successfully.",
+        type: "success",
+      });
+    } catch {
+      toast.add({
+        title: `${course.title} Unable to delete`,
+        description: "Please check your connection and try again.",
+        type: "error",
+      });
+    } finally {
+      setDeletingCourseId(null);
+    }
+  };
+
+  const handlePublishCourse = async (course: Course) => {
+    if (publishingCourseId) return;
+    setPublishingCourseId(course.id);
+
+    try {
+      const response = await multipleApiHandler([
+        { endPoint: `/course/publish/${course.id}`, method: "PATCH", protected: true },
+      ]);
+      const res = response[0];
+
+      if (!res?.data?.success) {
+        toast.add({
+          title: `${course.title} Unable to publish`,
+          description: res?.data?.message ?? "Please try again.",
+          type: "error",
+        });
+        return;
+      }
+
+      setCourses((current) =>
+        current.map((item) => (item.id === course.id ? { ...item, status: "Published" as CourseStatus } : item)),
+      );
+      toast.add({
+        title: `${course.title} published`,
+        description: res.data.message ?? "The course is now live.",
+        type: "success",
+      });
+    } catch {
+      toast.add({
+        title: `${course.title} Unable to publish`,
+        description: "Please check your connection and try again.",
+        type: "error",
+      });
+    } finally {
+      setPublishingCourseId(null);
+    }
   };
 
   const fetchAllTheCreatedCourse = useDebounce(async () => {
     try {
-      const response = await multipleApiHandler([
-        { endPoint: "/course/fetch/all", method: "GET", protected: true },
-      ]);
+      const response = await multipleApiHandler([{ endPoint: "/course/fetch/all", method: "GET", protected: true }]);
       const res = response[0];
       const apiCourses = res?.data?.data?.courses;
 
@@ -80,23 +143,30 @@ function CourseManagementPage() {
         throw new Error(res?.data?.message ?? "Unable to fetch courses.");
       }
 
-      setCourses(apiCourses.map((course: Record<string, unknown>) => ({
-        id: String(course.id ?? ""),
-        title: String(course.title ?? "Untitled course"),
-        description: String(course.description ?? ""),
-        price: Number(course.price ?? 0),
-        discountPercentage: Number(course.discount ?? course.discountPercentage ?? 0),
-        payableAmount: Number(course.totalPayableAmount ?? course.payableAmount ?? 0),
-        roundPayableAmount: Boolean(course.roundPayableAmount),
-        status: String(course.status ?? "DRAFT").toLowerCase().replace(/^./, (letter) => letter.toUpperCase()) as CourseStatus,
-        students: Number(course.students ?? 0),
-        coverImageName: String(course.thumbnailId ?? ""),
-        thumbnailUrl: String(course.thumbnailURL ?? course.thumbnailUrl ?? course.thumbnail_url ?? ""),
-        videoFileName: "",
-        videoThumbnailMode: "custom",
-        videoThumbnailName: String(course.thumbnailId ?? ""),
-        updatedAt: String(course.updatedAt ?? course.createdAt ?? new Date().toISOString()),
-      })));
+      setCourses(
+        apiCourses.map((course: Record<string, unknown>) => ({
+          id: String(course.id ?? ""),
+          title: String(course.title ?? "Untitled course"),
+          description: String(course.description ?? ""),
+          price: Number(course.price ?? 0),
+          discountPercentage: Number(course.discount ?? course.discountPercentage ?? 0),
+          payableAmount: Number(course.totalPayableAmount ?? course.payableAmount ?? 0),
+          roundPayableAmount: Boolean(course.roundPayableAmount),
+          status: String(course.status ?? "DRAFT")
+            .toLowerCase()
+            .replace(/^./, (letter) => letter.toUpperCase()) as CourseStatus,
+          students: Number(course.totalEnrolledStudents ?? course.students ?? 0),
+          averageRating: Number(course.averageRating ?? 0),
+          totalEnrolledStudents: Number(course.totalEnrolledStudents ?? course.students ?? 0),
+          videoCount: Number(course.videoCount ?? 0),
+          coverImageName: String(course.thumbnailId ?? ""),
+          thumbnailUrl: String(course.thumbnailURL ?? course.thumbnailUrl ?? course.thumbnail_url ?? ""),
+          videoFileName: "",
+          videoThumbnailMode: "custom",
+          videoThumbnailName: String(course.thumbnailId ?? ""),
+          updatedAt: String(course.updatedAt ?? course.createdAt ?? new Date().toISOString()),
+        })),
+      );
     } catch (error) {
       toast.add({
         description: error instanceof Error ? error.message : "Unable to fetch courses.",
@@ -159,6 +229,7 @@ function CourseManagementPage() {
           isLoading={isLoading}
           onDelete={setCourseToDelete}
           onEdit={(course) => navigate(`/course/edit?id=${course.id}`)}
+          onPublish={handlePublishCourse}
         />
 
         <div className="flex flex-col gap-3 border-t px-4 py-3 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
@@ -203,13 +274,16 @@ function CourseManagementPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this course?</AlertDialogTitle>
             <AlertDialogDescription>
-              “{courseToDelete?.title}” will be removed from the course list. This mock action cannot be undone.
+              “{courseToDelete?.title}” will be permanently deleted. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteCourse} variant="destructive">
-              Delete course
+            <AlertDialogAction
+              disabled={deletingCourseId === courseToDelete?.id}
+              onClick={handleDeleteCourse}
+              variant="destructive">
+              {deletingCourseId === courseToDelete?.id ? "Deleting..." : "Delete course"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
