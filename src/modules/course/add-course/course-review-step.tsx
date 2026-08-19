@@ -142,9 +142,13 @@ function CourseReviewStep({
           <CardHeader className="border-b px-5 py-4">
             <CardTitle className="text-base font-bold">3. Course thumbnail</CardTitle>
           </CardHeader>
-          <CardContent className="px-5 py-5">
+          <CardContent className="flex justify-center px-5 py-5">
             {thumbnailUrl ? (
-              <img alt={courseTitle} className="aspect-video w-full rounded-lg object-cover" src={thumbnailUrl} />
+              <img
+                alt={courseTitle}
+                className="h-auto max-h-[500px] w-[600px] max-w-full rounded-lg object-contain"
+                src={thumbnailUrl}
+              />
             ) : (
               <div className="relative h-44 overflow-hidden rounded-lg bg-slate-100" />
             )}

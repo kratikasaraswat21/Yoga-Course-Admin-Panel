@@ -227,6 +227,7 @@ function CourseManagementPage() {
         <CourseTable
           courses={visibleCourses}
           isLoading={isLoading}
+          onAnalytics={(course) => navigate(`/course/analytics/${course.id}`)}
           onDelete={setCourseToDelete}
           onEdit={(course) => navigate(`/course/edit?id=${course.id}`)}
           onPublish={handlePublishCourse}
