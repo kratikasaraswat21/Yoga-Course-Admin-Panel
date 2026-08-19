@@ -407,7 +407,7 @@ function CourseDetailsStep({
               {selectedImage || isValidUrl(details?.thumbnailURL) ? (
                 <img
                   alt="Course thumbnail preview"
-                  className="absolute inset-0 size-full object-cover"
+                  className="absolute left-1/2 top-1/2 h-auto max-h-[500px] w-[600px] max-w-full -translate-x-1/2 -translate-y-1/2 object-contain"
                   src={previewUrl || details?.thumbnailURL}
                 />
               ) : (

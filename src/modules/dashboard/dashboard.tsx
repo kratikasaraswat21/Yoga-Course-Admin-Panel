@@ -1,12 +1,13 @@
+import AffiliateProductDashboardSection from "@/modules/affiliate-product/affiliateProductDashboardSection";
+import CourseDashboardSection from "@/modules/course/courseDashboardSection";
 import PdfCourseDashboardSection from "@/modules/pdf-course/pdfCourseDashboardSection";
 
 function DashboardPage() {
   return (
-    <section className="grid h-full lg:grid-cols-[minmax(0,65fr)_minmax(22rem,20fr)] p-4 sm:p-6 lg:p-8">
-      <div className="flex items-center justify-center rounded-2xl rounded-tr-none rounded-br-none border p-8 text-white lg:min-h-0 bg-white border-r-0">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-black">Dashboard screen</h2>
-        </div>
+    <section className="grid h-full min-h-0 gap-4 p-4 sm:p-6 lg:grid-cols-[minmax(0,65fr)_minmax(22rem,20fr)] lg:gap-0 lg:p-8">
+      <div className="grid h-full min-h-0 grid-rows-[3fr_2fr] gap-4 overflow-hidden rounded-2xl rounded-tr-none rounded-br-none border border-r-0 bg-white">
+        <CourseDashboardSection />
+        <AffiliateProductDashboardSection />
       </div>
       <PdfCourseDashboardSection />
     </section>

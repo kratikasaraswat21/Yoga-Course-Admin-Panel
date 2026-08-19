@@ -1,4 +1,4 @@
-import { BookOpen, MoreHorizontal, Pencil, Percent, Send, Star, Trash2, Users, Video } from "lucide-react";
+import { BarChart3, BookOpen, MoreHorizontal, Pencil, Percent, Send, Star, Trash2, Users, Video } from "lucide-react";
 
 import CourseStatusBadge from "@/components/course/course-status-badge.component";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ interface CourseTableProps {
   onDelete: (course: Course) => void;
   onEdit: (course: Course) => void;
   onPublish: (course: Course) => void;
+  onAnalytics: (course: Course) => void;
 }
 
 interface CourseActionsProps {
@@ -28,9 +29,10 @@ interface CourseActionsProps {
   onDelete: (course: Course) => void;
   onEdit: (course: Course) => void;
   onPublish: (course: Course) => void;
+  onAnalytics: (course: Course) => void;
 }
 
-function CourseActions({ course, onDelete, onEdit, onPublish }: CourseActionsProps) {
+function CourseActions({ course, onDelete, onEdit, onPublish, onAnalytics }: CourseActionsProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -51,6 +53,14 @@ function CourseActions({ course, onDelete, onEdit, onPublish }: CourseActionsPro
           <Send aria-hidden="true" className="size-4 text-emerald-600" />
           {course.status === "Published" ? "Published" : "Publish course"}
         </DropdownMenuItem>
+        {course.status === "Published" && (
+          <DropdownMenuItem
+            className="h-9 cursor-pointer gap-2 px-3 text-slate-700 hover:bg-blue-50 hover:text-blue-700 focus:bg-blue-50 focus:text-blue-700"
+            onClick={() => onAnalytics(course)}>
+            <BarChart3 aria-hidden="true" className="size-4 text-blue-600" />
+            View analytics
+          </DropdownMenuItem>
+        )}
         {(course.totalEnrolledStudents ?? course.students) === 0 && (
           <>
             <DropdownMenuSeparator className="my-1.5 bg-slate-200" />
@@ -111,7 +121,7 @@ function CourseTableSkeleton() {
   );
 }
 
-function CourseTable({ courses, isLoading = false, onDelete, onEdit, onPublish }: CourseTableProps) {
+function CourseTable({ courses, isLoading = false, onDelete, onEdit, onPublish, onAnalytics }: CourseTableProps) {
   if (isLoading) return <CourseTableSkeleton />;
   if (!courses.length) return <EmptyCourseState />;
 
@@ -171,7 +181,7 @@ function CourseTable({ courses, isLoading = false, onDelete, onEdit, onPublish }
                 <TableCell className="font-medium">{formatCoursePrice(course.payableAmount)}</TableCell>
                 <TableCell className="text-slate-500">{formatCourseDate(course.updatedAt)}</TableCell>
                 <TableCell className="pr-4 text-right">
-                  <CourseActions course={course} onDelete={onDelete} onEdit={onEdit} onPublish={onPublish} />
+                  <CourseActions course={course} onAnalytics={onAnalytics} onDelete={onDelete} onEdit={onEdit} onPublish={onPublish} />
                 </TableCell>
               </TableRow>
             ))}
@@ -199,7 +209,7 @@ function CourseTable({ courses, isLoading = false, onDelete, onEdit, onPublish }
                   <p className="font-medium leading-5">{course.title}</p>
                   <p className="mt-1 line-clamp-1 text-xs text-slate-500">{course.description}</p>
                 </div>
-                <CourseActions course={course} onDelete={onDelete} onEdit={onEdit} onPublish={onPublish} />
+                <CourseActions course={course} onAnalytics={onAnalytics} onDelete={onDelete} onEdit={onEdit} onPublish={onPublish} />
               </div>
 
               <div className="flex flex-wrap items-center gap-2">

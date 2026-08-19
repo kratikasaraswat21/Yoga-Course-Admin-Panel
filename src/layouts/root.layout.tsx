@@ -3,6 +3,7 @@ import AffiliateProductManagementPage from "@/modules/affiliate-product/affiliat
 import DashboardLayout from "@/layouts/dashboard.layout";
 import AddCoursePage from "@/modules/course/add-course/add-course-page";
 import CourseManagementPage from "@/modules/course/courseManagement";
+import CourseAnalyticsPage from "@/modules/course/courseAnalyticsPage";
 import PdfCourseManagementPage from "@/modules/pdf-course/pdfCourseManagement";
 import DashboardPage from "@/modules/dashboard/dashboard";
 import ProtectedRoute from "@/router/protected.router";
@@ -21,6 +22,7 @@ function RootLayout() {
           </Route>
           <Route path="/course" element={<DashboardLayout />}>
             <Route index element={<CourseManagementPage />} />
+            <Route path="analytics/:courseId" element={<CourseAnalyticsPage />} />
             <Route path="add" element={<AddCoursePage />} />
             <Route path="edit" element={<AddCoursePage />} />
           </Route>
