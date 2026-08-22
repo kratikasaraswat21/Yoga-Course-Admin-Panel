@@ -2,7 +2,7 @@ import { clearLocalSessionStorage, getDataFromSecureCookie } from "@/utils/helpe
 import { Navigate } from "react-router-dom";
 
 const RedirectToDashboard = () => {
-  const tokenValue = getDataFromSecureCookie("authenticationToken");
+  const tokenValue = getDataFromSecureCookie("yoga_platform_auth_token");
 
   if (tokenValue) {
     return <Navigate to="/dashboard" replace />;

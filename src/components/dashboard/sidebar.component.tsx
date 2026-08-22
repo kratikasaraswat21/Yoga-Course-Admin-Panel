@@ -1,6 +1,7 @@
-import { ChevronRight, Leaf, X } from "lucide-react";
+import { ChevronRight, X } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
+import logo from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
 import { DASHBOARD_NAVIGATION_ITEMS } from "@/utils/constants/dashboard.constants";
 import { cn } from "@/utils/helper/helper";
@@ -26,11 +27,11 @@ function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
       )}>
       <div className="flex h-18 items-center border-b border-slate-200 px-4">
         <div className="flex min-w-0 items-center gap-3 overflow-hidden">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-slate-950 text-white">
-            <Leaf aria-hidden="true" className="size-5" />
+          <div className="flex size-10">
+            <img alt="Kratika Yoga" className="size-full object-contain" src={logo} />
           </div>
           <div className="min-w-0 whitespace-nowrap">
-            <p className="truncate text-sm font-semibold">Yoga Platform</p>
+            <p className="truncate font-serif text-base font-semibold text-slate-950">Kratika Yoga</p>
             <p className="truncate text-xs text-slate-500">Admin Panel</p>
           </div>
           <Button aria-label="Close navigation" className="ml-auto xl:hidden" onClick={onClose} size="icon" type="button" variant="ghost"><X /></Button>
