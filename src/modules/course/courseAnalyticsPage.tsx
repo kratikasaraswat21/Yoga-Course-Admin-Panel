@@ -5,21 +5,34 @@ import {
   ChevronUp,
   Clock3,
   FileVideo,
+  LoaderCircle,
   PlayCircle,
+  ShieldAlert,
+  ShieldCheck,
   Star,
   Users,
   Video,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/variants/toast.manager";
 import { useDebounce } from "@/hooks/useDebounce";
 import { multipleApiHandler } from "@/utils/api/multiple.api";
 import { formatCoursePrice } from "@/utils/helper/course.helper";
@@ -204,6 +217,15 @@ function CourseAnalyticsPage() {
   const [enrollmentFilter, setEnrollmentFilter] = useState("ALL");
   const [userPage, setUserPage] = useState(1);
   const [expandedVideos, setExpandedVideos] = useState<Record<string, boolean>>({});
+  const [enrollmentToRevoke, setEnrollmentToRevoke] = useState<Enrollment | null>(null);
+  const [revokeReason, setRevokeReason] = useState("");
+  const [revokeError, setRevokeError] = useState("");
+  const [isRevoking, setIsRevoking] = useState(false);
+  const revocationInProgressRef = useRef(false);
+  const [enrollmentToRestore, setEnrollmentToRestore] = useState<Enrollment | null>(null);
+  const [restoreError, setRestoreError] = useState("");
+  const [isRestoring, setIsRestoring] = useState(false);
+  const restorationInProgressRef = useRef(false);
 
   const fetchAnalytics = useDebounce(async () => {
     if (!courseId) {
@@ -240,6 +262,166 @@ function CourseAnalyticsPage() {
   useEffect(() => {
     fetchAnalytics();
   }, [fetchAnalytics, retryKey]);
+
+  const revokeAccess = useDebounce(async (enrollment: Enrollment, reason: string) => {
+    if (!courseId) return;
+
+    try {
+      const response = await multipleApiHandler([
+        {
+          endPoint: `/course/${encodeURIComponent(courseId)}/users/${encodeURIComponent(enrollment.user.id)}/revoke-access`,
+          method: "POST",
+          protected: true,
+          data: { reason },
+        },
+      ]);
+      const result = response[0];
+
+      if (result?.status === 401 || result?.status === 403) {
+        navigate("/auth/login", { replace: true });
+        return;
+      }
+
+      if (!result?.data?.success) {
+        const message = result?.data?.message || "Unable to revoke course access.";
+        setRevokeError(message);
+        toast.add({ title: "Unable to revoke access", description: message, type: "error" });
+        return;
+      }
+
+      setData((current) =>
+        current
+          ? {
+              ...current,
+              enrolledUsers: current.enrolledUsers.map((item) =>
+                item.id === enrollment.id ? { ...item, status: "REVOKED" } : item,
+              ),
+            }
+          : current,
+      );
+      setEnrollmentToRevoke(null);
+      setRevokeReason("");
+      setRevokeError("");
+      toast.add({
+        title: "Course access revoked successfully",
+        description: result.data.message || `${enrollment.user.name}'s access to this course was revoked.`,
+        type: "success",
+      });
+      fetchAnalytics();
+    } catch {
+      const message = "Unable to revoke course access. Please check your connection and try again.";
+      setRevokeError(message);
+      toast.add({ title: "Unable to revoke access", description: message, type: "error" });
+    } finally {
+      revocationInProgressRef.current = false;
+      setIsRevoking(false);
+    }
+  }, 100);
+
+  const openRevokeDialog = (enrollment: Enrollment) => {
+    setEnrollmentToRevoke(enrollment);
+    setRevokeReason("");
+    setRevokeError("");
+  };
+
+  const closeRevokeDialog = () => {
+    if (isRevoking) return;
+    setEnrollmentToRevoke(null);
+    setRevokeReason("");
+    setRevokeError("");
+  };
+
+  const submitRevoke = () => {
+    const reason = revokeReason.trim();
+    if (!enrollmentToRevoke || isRevoking || revocationInProgressRef.current) return;
+    if (reason.length < 5 || reason.length > 1000) {
+      setRevokeError("Reason must be between 5 and 1000 characters.");
+      return;
+    }
+
+    revocationInProgressRef.current = true;
+    setIsRevoking(true);
+    setRevokeError("");
+    revokeAccess(enrollmentToRevoke, reason);
+  };
+
+  const restoreAccess = useDebounce(async (enrollment: Enrollment) => {
+    if (!courseId) return;
+
+    try {
+      const response = await multipleApiHandler([
+        {
+          endPoint:
+            "/course/" +
+            encodeURIComponent(courseId) +
+            "/users/" +
+            encodeURIComponent(enrollment.user.id) +
+            "/restore-access",
+          method: "POST",
+          protected: true,
+        },
+      ]);
+      const result = response[0];
+
+      if (result?.status === 401 || result?.status === 403) {
+        navigate("/auth/login", { replace: true });
+        return;
+      }
+
+      if (!result?.data?.success) {
+        const message = result?.data?.message || "Unable to restore course access.";
+        setRestoreError(message);
+        toast.add({ title: "Unable to restore access", description: message, type: "error" });
+        return;
+      }
+
+      setData((current) =>
+        current
+          ? {
+              ...current,
+              enrolledUsers: current.enrolledUsers.map((item) =>
+                item.id === enrollment.id ? { ...item, status: "ACTIVE" } : item,
+              ),
+            }
+          : current,
+      );
+      setEnrollmentToRestore(null);
+      setRestoreError("");
+      toast.add({
+        title: "Course access restored successfully",
+        description: result.data.message || enrollment.user.name + "'s access to this course is active again.",
+        type: "success",
+      });
+      fetchAnalytics();
+    } catch {
+      const message = "Unable to restore course access. Please check your connection and try again.";
+      setRestoreError(message);
+      toast.add({ title: "Unable to restore access", description: message, type: "error" });
+    } finally {
+      restorationInProgressRef.current = false;
+      setIsRestoring(false);
+    }
+  }, 100);
+
+  const openRestoreDialog = (enrollment: Enrollment) => {
+    setEnrollmentToRestore(enrollment);
+    setRestoreError("");
+  };
+
+  const closeRestoreDialog = () => {
+    if (isRestoring) return;
+    setEnrollmentToRestore(null);
+    setRestoreError("");
+  };
+
+  const submitRestore = () => {
+    if (!enrollmentToRestore || isRestoring || restorationInProgressRef.current) return;
+
+    restorationInProgressRef.current = true;
+    setIsRestoring(true);
+    setRestoreError("");
+    restoreAccess(enrollmentToRestore);
+  };
 
   const filteredUsers = useMemo(() => {
     const query = userSearch.trim().toLowerCase();
@@ -406,6 +588,7 @@ function CourseAnalyticsPage() {
                   <TableHead>Enrollment</TableHead>
                   <TableHead>Enrolled</TableHead>
                   <TableHead>Expiry</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -423,6 +606,20 @@ function CourseAnalyticsPage() {
                     </TableCell>
                     <TableCell>{formatDate(enrollment.enrolledAt)}</TableCell>
                     <TableCell>{enrollment.expiresAt ? formatDate(enrollment.expiresAt) : "No expiry"}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        disabled={isRevoking || isRestoring}
+                        onClick={() =>
+                          enrollment.status.toUpperCase() === "REVOKED"
+                            ? openRestoreDialog(enrollment)
+                            : openRevokeDialog(enrollment)
+                        }
+                        size="sm"
+                        type="button"
+                        variant={enrollment.status.toUpperCase() === "REVOKED" ? "outline" : "destructive"}>
+                        {enrollment.status.toUpperCase() === "REVOKED" ? "Restore Access" : "Revoke Access"}
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -454,6 +651,114 @@ function CourseAnalyticsPage() {
           <EmptyState message="No enrolled users found." />
         )}
       </Card>
+
+      <Dialog open={Boolean(enrollmentToRevoke)} onOpenChange={(open) => !open && closeRevokeDialog()}>
+        <DialogContent className="max-w-md gap-0 overflow-hidden p-0">
+          <DialogHeader className="border-b bg-slate-50/80 p-6 pb-5 pr-12">
+            <div className="mb-3 flex size-10 items-center justify-center rounded-xl bg-red-100 text-red-600">
+              <ShieldAlert className="size-5" />
+            </div>
+            <DialogTitle className="text-lg font-semibold tracking-tight">Revoke course access?</DialogTitle>
+            <DialogDescription className="mt-1.5 leading-5">
+              Access for{" "}
+              <strong className="font-semibold text-slate-700">{enrollmentToRevoke?.user.name || "this user"}</strong>{" "}
+              will be removed from <strong className="font-semibold text-slate-700">{course.title}</strong>.
+              <span className="mt-2 block text-xs font-medium text-slate-500">
+                This does not affect their account or access to other courses.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 p-6">
+            <label
+              className="flex items-center justify-between gap-3 text-sm font-semibold text-slate-800"
+              htmlFor="revoke-reason">
+              <span>
+                Reason for revoking access <span className="text-red-500">*</span>
+              </span>
+              <span className="text-xs font-normal text-slate-400">Required</span>
+            </label>
+            <Textarea
+              aria-describedby={revokeError ? "revoke-reason-error" : undefined}
+              aria-invalid={Boolean(revokeError)}
+              className="min-h-32 resize-none border-slate-200 bg-white shadow-sm placeholder:text-slate-400 focus-visible:border-slate-400 focus-visible:ring-slate-200"
+              disabled={isRevoking}
+              id="revoke-reason"
+              maxLength={1000}
+              onChange={(event) => {
+                setRevokeReason(event.target.value);
+                if (revokeError) setRevokeError("");
+              }}
+              placeholder="Enter the reason for this course-specific revocation"
+              rows={5}
+              value={revokeReason}
+            />
+            <div className="flex min-h-5 items-start justify-between gap-3 text-xs">
+              <span id="revoke-reason-error" className={revokeError ? "font-medium text-red-600" : "text-slate-500"}>
+                {revokeError || "Enter between 5 and 1000 characters."}
+              </span>
+              <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-500">
+                {revokeReason.length}/1000
+              </span>
+            </div>
+          </div>
+          <DialogFooter className="m-0 rounded-none border-t bg-slate-50/80 px-6 py-4 sm:justify-end">
+            <Button
+              className="w-full sm:w-auto"
+              disabled={isRevoking}
+              onClick={closeRevokeDialog}
+              type="button"
+              variant="outline">
+              Cancel
+            </Button>
+            <Button
+              className="w-full bg-red-600 text-white hover:bg-red-700 sm:w-auto"
+              disabled={isRevoking || revokeReason.trim().length < 5}
+              onClick={submitRevoke}
+              type="button">
+              {isRevoking && <LoaderCircle className="size-4 animate-spin" />}
+              {isRevoking ? "Revoking…" : "Revoke Access"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(enrollmentToRestore)} onOpenChange={(open) => !open && closeRestoreDialog()}>
+        <DialogContent className="max-w-md gap-0 overflow-hidden p-0">
+          <DialogHeader className="border-b bg-emerald-50/70 p-6 pb-5 pr-12">
+            <div className="mb-3 flex size-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+              <ShieldCheck className="size-5" />
+            </div>
+            <DialogTitle className="text-lg font-semibold tracking-tight">Restore course access?</DialogTitle>
+            <DialogDescription className="mt-1.5 leading-5">
+              Restore access for{" "}
+              <strong className="font-semibold text-slate-700">{enrollmentToRestore?.user.name || "this user"}</strong>{" "}
+              to <strong className="font-semibold text-slate-700">{course.title}</strong>.
+              <span className="mt-2 block text-xs font-medium text-slate-500">
+                Only this course will be restored. Their account and other courses will remain unchanged.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="m-0 rounded-none border-t bg-slate-50/80 px-6 py-4 sm:justify-end">
+            <Button
+              className="w-full sm:w-auto"
+              disabled={isRestoring}
+              onClick={closeRestoreDialog}
+              type="button"
+              variant="outline">
+              Cancel
+            </Button>
+            <Button
+              className="w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
+              disabled={isRestoring}
+              onClick={submitRestore}
+              type="button">
+              {isRestoring && <LoaderCircle className="size-4 animate-spin" />}
+              {isRestoring ? "Restoring…" : "Restore Access"}
+            </Button>
+          </DialogFooter>
+          {restoreError && <p className="px-6 pb-5 text-xs font-medium text-red-600">{restoreError}</p>}
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardHeader>

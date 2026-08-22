@@ -50,7 +50,7 @@ const fetchEndpoint = async (endpoint: EndpointObject, signal?: AbortSignal): Pr
   };
 
   if (endpoint.protected && !headers.Authorization) {
-    const token = getDataFromSecureCookie("authenticationToken");
+    const token = getDataFromSecureCookie("yoga_platform_auth_token");
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 

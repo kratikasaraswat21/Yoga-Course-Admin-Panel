@@ -4,9 +4,9 @@ import { getDataFromSecureCookie } from "@/utils/helper/helper";
 
 function ProtectedRoute() {
   const location = useLocation();
-  const authenticationToken = getDataFromSecureCookie("authenticationToken");
+  const yoga_platform_auth_token = getDataFromSecureCookie("yoga_platform_auth_token");
 
-  if (!authenticationToken) {
+  if (!yoga_platform_auth_token) {
     return <Navigate replace state={{ from: location.pathname }} to="/auth/login" />;
   }
 

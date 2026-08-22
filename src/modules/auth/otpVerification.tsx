@@ -47,7 +47,7 @@ function OTPVerificationPage() {
         description: "",
       });
     } else {
-      storeDataInSecureCookie(res?.data?.data?.auth_token, "authenticationToken", true);
+      storeDataInSecureCookie(res?.data?.data?.auth_token, "yoga_platform_auth_token", true);
       navigate("/dashboard");
       toast.promise(
         new Promise<{ name: string }>((resolve) => {

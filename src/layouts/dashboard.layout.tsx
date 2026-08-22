@@ -21,7 +21,7 @@ function DashboardLayout() {
 
   const fetchUserStatus = useDebounce(async () => {
     try {
-      const token = getDataFromSecureCookie("authenticationToken");
+      const token = getDataFromSecureCookie("yoga_platform_auth_token");
       if (!token) {
         toast.add({
           title: ERROR_MESSAGES.SESSION_EXPIRED_TITLE,
