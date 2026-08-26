@@ -1,4 +1,3 @@
-import { EnvConfig } from "@/utils/config/envConfig";
 import type { CookieConfigInterface } from "@/utils/interface/helper.interface";
 import { clsx, type ClassValue } from "clsx";
 import Cookies from "js-cookie";
@@ -9,15 +8,11 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 const getCookieConfig = (): CookieConfigInterface => {
-  const isDev = EnvConfig.CURRENT_ENVIRONMENT === "DEVELOPMENT";
-
   return {
-    secure: !isDev,
-    sameSite: !isDev ? "None" : "Lax",
+    secure: true,
+    sameSite: "Lax",
     path: "/",
-    ...(!isDev && {
-      domain: ".orbitrms.com",
-    }),
+    domain: "admin.kratikayoga.com",
     expires: 30,
   };
 };
