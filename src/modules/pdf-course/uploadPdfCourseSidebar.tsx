@@ -444,7 +444,7 @@ function UploadPdfCourseSidebar({
                 <div className="space-y-2">
                   <Label htmlFor="pdf-discount">Discount</Label>
                   <div className="relative">
-                    <Input aria-invalid={Boolean(errors.discount)} className="h-11 bg-white pr-10" disabled={isFree} id="pdf-discount" max="100" min="0" onChange={(e) => updateDiscount(e.target.value)} type="number" value={formData.discount || ""} />
+                    <Input aria-invalid={Boolean(errors.discount)} className="h-11 bg-white pr-10" disabled={isFree} id="pdf-discount" max="100" min="0" onChange={(e) => updateDiscount(e.target.value)} step="0.01" type="number" value={formData.discount || ""} />
                     <Percent aria-hidden="true" className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-slate-400" />
                   </div>
                   {errors.discount && <p className="text-sm text-red-500">{errors.discount}</p>}
