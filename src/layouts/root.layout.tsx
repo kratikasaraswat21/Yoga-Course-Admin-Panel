@@ -6,6 +6,7 @@ import CourseManagementPage from "@/modules/course/courseManagement";
 import CourseAnalyticsPage from "@/modules/course/courseAnalyticsPage";
 import PdfCourseManagementPage from "@/modules/pdf-course/pdfCourseManagement";
 import DashboardPage from "@/modules/dashboard/dashboard";
+import ResetPasswordPage from "@/modules/auth/resetPassword";
 import ProtectedRoute from "@/router/protected.router";
 import RedirectToDashboard from "@/utils/lib/redirectToDashboard";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
@@ -15,6 +16,7 @@ function RootLayout() {
     <BrowserRouter>
       <Routes>
         <Route path="/auth/*" element={<AuthRoutes />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<DashboardPage />} />

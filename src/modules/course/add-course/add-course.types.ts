@@ -42,6 +42,7 @@ export interface CourseVideoConfiguration {
   file: File;
   durationSeconds: number;
   formData: CourseVideoFormData;
+  videoId?: string;
 }
 
 export interface CourseVideoFormData {

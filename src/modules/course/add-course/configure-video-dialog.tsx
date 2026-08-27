@@ -39,17 +39,19 @@ const formatFileSize = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)}
 const formatDuration = (seconds: number) => `${Math.floor(seconds / 60)} min ${Math.round(seconds % 60)} sec`;
 
 function ConfigureVideoDialog({ courseId, configuration, onClose, onConfirm, fetchVideos }: ConfigureVideoDialogProps) {
+  const isEditing = Boolean(configuration?.videoId);
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState<CourseVideoFormData>(() => ({
-    description: "",
+    description: configuration?.formData.description ?? "",
     thumbnailFile: undefined,
-    thumbnailType: "custom",
-    thumbnailUrl: "",
-    thumbnailId: "",
-    title: configuration?.file.name.replace(/\.[^/.]+$/, "") ?? "",
+    thumbnailType: configuration?.formData.thumbnailType ?? "custom",
+    thumbnailUrl: configuration?.formData.thumbnailUrl ?? "",
+    thumbnailId: configuration?.formData.thumbnailId ?? "",
+    title: configuration?.formData.title ?? configuration?.file.name.replace(/\.[^/.]+$/, "") ?? "",
   }));
 
   const [isUploading, setIsUploading] = useState(false);
+  const [isDeletingThumbnail, setIsDeletingThumbnail] = useState(false);
   const [errors, setErrors] = useState<CourseVideoConfigurationErrors>({});
   const [isThumbnailDragging, setIsThumbnailDragging] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -97,27 +99,44 @@ function ConfigureVideoDialog({ courseId, configuration, onClose, onConfirm, fet
   };
 
   const handelRemoveThumbnailFunction = async (imageId: string) => {
-    const response = await multipleApiHandler([
-      {
-        endPoint: `/course/cloud/thumbnail/${imageId}`,
-        method: "DELETE",
-        protected: true,
-      },
-    ]);
+    setIsDeletingThumbnail(true);
+    try {
+      const response = await multipleApiHandler([
+        {
+          endPoint: `/course/cloud/thumbnail/${imageId}`,
+          method: "DELETE",
+          protected: true,
+        },
+      ]);
 
-    const res = response[0];
+      const res = response[0];
 
-    if (!res?.ok || !res.data?.success) {
-      throw new Error(res?.data?.message ?? ERROR_MESSAGES.COURSE_THUMBNAIL_UPLOAD_URL_FAILED);
+      if (!res?.ok || !res.data?.success) {
+        setFormData((current) => ({ ...current, thumbnailFile: undefined, thumbnailUrl: "", thumbnailId: "" }));
+        throw new Error(res?.data?.message ?? "The thumbnail could not be deleted.");
+      }
+
+      setFormData((current) => ({ ...current, thumbnailFile: undefined, thumbnailUrl: "", thumbnailId: "" }));
+      toast.add({
+        description: res.data.message ?? "The thumbnail was deleted successfully.",
+        title: "Thumbnail deleted",
+        type: "success",
+      });
+    } catch (error) {
+      toast.add({
+        description: error instanceof Error ? error.message : "The thumbnail could not be deleted.",
+        title: "Thumbnail deletion failed",
+        type: "error",
+      });
+    } finally {
+      setIsDeletingThumbnail(false);
     }
-
-    setFormData((current) => ({ ...current, thumbnailFile: undefined, thumbnailUrl: "", thumbnailId: "" }));
   };
 
   const removeThumbnail = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
     if (formData?.thumbnailId) {
-      handelRemoveThumbnailFunction(formData?.thumbnailId);
+      void handelRemoveThumbnailFunction(formData.thumbnailId);
     } else {
       setFormData((current) => ({ ...current, thumbnailFile: undefined }));
     }
@@ -256,13 +275,62 @@ function ConfigureVideoDialog({ courseId, configuration, onClose, onConfirm, fet
       setIsUploading(false);
     }
   };
+
+  const handleUpdateVideo = async () => {
+    if (!configuration?.videoId) return;
+
+    setIsUploading(true);
+    try {
+      const response = await multipleApiHandler([
+        {
+          endPoint: `/uploads/videos/edit`,
+          method: "PUT",
+          protected: true,
+          data: {
+            videoId: configuration.videoId,
+            title: formData.title,
+            description: formData.description,
+            thumbnailUrl: formData.thumbnailUrl,
+            thumbnailId: formData.thumbnailId,
+          },
+        },
+      ]);
+      const result = response[0];
+
+      toast.add({
+        description:
+          result?.data?.message ??
+          (result?.data?.success ? "The video was updated successfully." : "The video could not be updated."),
+        title: result?.data?.success ? "Video updated" : "Video update failed",
+        type: result?.data?.success ? "success" : "error",
+      });
+
+      if (result?.data?.success) {
+        fetchVideos();
+        onConfirm({ ...configuration, formData });
+        onClose();
+      }
+    } catch (error) {
+      toast.add({
+        description: error instanceof Error ? error.message : "The video could not be updated.",
+        title: "Video update failed",
+        type: "error",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
   const handleConfirm = () => {
     if (!configuration) return;
     const nextConfiguration = { ...configuration, formData };
     const validation = validateCourseVideoConfiguration(nextConfiguration);
     setErrors(validation.errors);
     if (!validation.isValid) return;
-    handleProceedVideoUploadation();
+    if (isEditing) {
+      handleUpdateVideo();
+    } else {
+      handleProceedVideoUploadation();
+    }
   };
 
   const handleUploadImageToCloudflare = ({
@@ -409,14 +477,17 @@ function ConfigureVideoDialog({ courseId, configuration, onClose, onConfirm, fet
         <AlertDialogHeader className="text-left">
           <div className="w-full flex items-center justify-between p-6 border-b">
             <div className="flex flex-col items-start justify-start gap-2">
-              <AlertDialogTitle className="pr-10 text-xl xl:text-2xl font-bold">Configure video</AlertDialogTitle>
+              <AlertDialogTitle className="pr-10 text-xl xl:text-2xl font-bold">
+                {isEditing ? "Update video configuration" : "Configure video"}
+              </AlertDialogTitle>
               <AlertDialogDescription className="text-base">
-                Add the video details before starting the upload.
+                {isEditing ? "Update the video details." : "Add the video details before starting the upload."}
               </AlertDialogDescription>
             </div>
             <Button
               aria-label="Close configure video dialog"
               className="rounded-md w-10 h-10"
+              disabled={isUploading || isDeletingThumbnail}
               onClick={onClose}
               type="button"
               variant="default">
@@ -446,38 +517,40 @@ function ConfigureVideoDialog({ courseId, configuration, onClose, onConfirm, fet
                   value={formData.description}
                 />
               </div>
-              <Card className="gap-0 overflow-hidden rounded-2xl bg-gray-100/10 p-0 shadow-sm ring-0 border border-slate-400">
-                <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-200/80 px-4 py-3 text-sm font-semibold text-slate-950">
-                  <span className="flex size-7 items-center justify-center rounded-md bg-white text-slate-700 shadow-sm ring-1 ring-slate-200">
-                    <FileVideo2 className="size-4" />
-                  </span>
-                  <span>Video file details</span>
-                </div>
-                <dl className="space-y-2 px-4 py-3 text-sm leading-5">
-                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
-                    <dt className="text-[#526b91]">File name</dt>
-                    <dd className="max-w-58.75 truncate text-right text-slate-950">{configuration.file.name}</dd>
+              {!isEditing && (
+                <Card className="gap-0 overflow-hidden rounded-2xl bg-gray-100/10 p-0 shadow-sm ring-0 border border-slate-400">
+                  <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-200/80 px-4 py-3 text-sm font-semibold text-slate-950">
+                    <span className="flex size-7 items-center justify-center rounded-md bg-white text-slate-700 shadow-sm ring-1 ring-slate-200">
+                      <FileVideo2 className="size-4" />
+                    </span>
+                    <span>Video file details</span>
                   </div>
-                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
-                    <dt className="text-[#526b91]">File type</dt>
-                    <dd className="text-right text-slate-950">
-                      {configuration.file.type.split("/")[1]?.toUpperCase()}
-                    </dd>
-                  </div>
-                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
-                    <dt className="text-[#526b91]">File size</dt>
-                    <dd className="text-right text-slate-950">{formatFileSize(configuration.file.size)}</dd>
-                  </div>
-                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
-                    <dt className="text-[#526b91]">Duration</dt>
-                    <dd className="text-right text-slate-950">{formatDuration(configuration.durationSeconds)}</dd>
-                  </div>
-                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
-                    <dt className="text-[#526b91]">Total duration (seconds)</dt>
-                    <dd className="text-right text-slate-950">{Math.round(configuration.durationSeconds)}</dd>
-                  </div>
-                </dl>
-              </Card>
+                  <dl className="space-y-2 px-4 py-3 text-sm leading-5">
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
+                      <dt className="text-[#526b91]">File name</dt>
+                      <dd className="max-w-58.75 truncate text-right text-slate-950">{configuration.file.name}</dd>
+                    </div>
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
+                      <dt className="text-[#526b91]">File type</dt>
+                      <dd className="text-right text-slate-950">
+                        {configuration.file.type.split("/")[1]?.toUpperCase()}
+                      </dd>
+                    </div>
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
+                      <dt className="text-[#526b91]">File size</dt>
+                      <dd className="text-right text-slate-950">{formatFileSize(configuration.file.size)}</dd>
+                    </div>
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
+                      <dt className="text-[#526b91]">Duration</dt>
+                      <dd className="text-right text-slate-950">{formatDuration(configuration.durationSeconds)}</dd>
+                    </div>
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
+                      <dt className="text-[#526b91]">Total duration (seconds)</dt>
+                      <dd className="text-right text-slate-950">{Math.round(configuration.durationSeconds)}</dd>
+                    </div>
+                  </dl>
+                </Card>
+              )}
             </div>
             <div className="space-y-3">
               <Label>Thumbnail</Label>
@@ -511,7 +584,8 @@ function ConfigureVideoDialog({ courseId, configuration, onClose, onConfirm, fet
                   {thumbnailPreview && (
                     <button
                       aria-label="Remove video thumbnail"
-                      className="absolute top-2 right-2 z-10 flex size-8 items-center justify-center rounded-full bg-slate-950/90 text-white hover:bg-slate-950"
+                      className="absolute top-2 right-2 z-10 flex size-8 items-center justify-center rounded-full bg-slate-950/90 text-white hover:bg-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={isDeletingThumbnail || isUploading}
                       onClick={removeThumbnail}
                       type="button">
                       <X className="size-4" />
@@ -530,8 +604,13 @@ function ConfigureVideoDialog({ courseId, configuration, onClose, onConfirm, fet
                 {(thumbnailPreview || formData?.thumbnailUrl) && (
                   <>
                     {formData?.thumbnailId?.length !== 0 ? (
-                      <Button className="mt-4 h-11 w-full" onClick={removeThumbnail} type="button" variant="default">
-                        Discard Image
+                      <Button
+                        className="mt-4 h-11 w-full"
+                        disabled={isDeletingThumbnail || isUploading}
+                        onClick={removeThumbnail}
+                        type="button"
+                        variant="default">
+                        {isDeletingThumbnail ? "Deleting image..." : "Discard Image"}
                       </Button>
                     ) : (
                       <Button
@@ -557,11 +636,16 @@ function ConfigureVideoDialog({ courseId, configuration, onClose, onConfirm, fet
         )}
         <div className="p-6 pt-0">
           <AlertDialogFooter className="-mx-6 -mb-6 flex-row justify-end gap-3 border-t p-5">
-            <Button className="h-11 px-6" onClick={onClose} type="button" variant="outline">
+            <Button
+              className="h-11 px-6"
+              disabled={isUploading || isDeletingThumbnail}
+              onClick={onClose}
+              type="button"
+              variant="outline">
               Cancel
             </Button>
-            <AlertDialogAction className="h-11 px-6" onClick={handleConfirm}>
-              Proceed to upload
+            <AlertDialogAction className="h-11 px-6" disabled={isUploading} onClick={handleConfirm}>
+              {isEditing ? "Update" : "Proceed to upload"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </div>

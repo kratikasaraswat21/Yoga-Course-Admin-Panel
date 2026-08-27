@@ -157,7 +157,6 @@ function AddCoursePage() {
     navigate("/course");
   };
 
-
   const handleCancel = () => {
     const hasCourseDetails = Object.entries(draft.details).some(([key, value]) => {
       if (key === "price" || key === "discountPercentage") return Number(value) > 0;

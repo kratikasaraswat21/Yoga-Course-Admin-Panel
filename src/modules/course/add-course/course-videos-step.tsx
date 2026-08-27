@@ -1,4 +1,4 @@
-import { GripVertical, LoaderCircle, RefreshCw, Trash2, UploadCloud, Video, X } from "lucide-react";
+import { GripVertical, LoaderCircle, Pencil, RefreshCw, Trash2, UploadCloud, Video, X } from "lucide-react";
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 
 import {
@@ -152,6 +152,24 @@ function CourseVideosStep({ courseId, videos, onVideosChange }: CourseVideosStep
     });
   };
 
+  const editVideo = (video: CourseVideo) => {
+    const file = new File([], video.originalFileName, { type: video.fileType || "video/mp4" });
+
+    setPendingVideo({
+      durationSeconds: video.durationSeconds ?? 0,
+      file,
+      formData: {
+        description: video.description ?? "",
+        thumbnailFile: undefined,
+        thumbnailType: "custom",
+        thumbnailUrl: video.thumbnailUrl ?? "",
+        thumbnailId: video.thumbnailId ?? "",
+        title: video.title ?? "",
+      },
+      videoId: video.id,
+    });
+  };
+
   const readVideoDuration = (file: File) =>
     new Promise<number>((resolve) => {
       const video = document.createElement("video");
@@ -195,7 +213,9 @@ function CourseVideosStep({ courseId, videos, onVideosChange }: CourseVideosStep
     const res = response[0];
 
     toast.add({
-      description: res?.data?.message ?? (res?.data?.success ? "The video was deleted successfully." : "The video could not be deleted."),
+      description:
+        res?.data?.message ??
+        (res?.data?.success ? "The video was deleted successfully." : "The video could not be deleted."),
       title: res?.data?.success ? "Video deleted" : "Video deletion failed",
       type: res?.data?.success ? "success" : "error",
     });
@@ -285,7 +305,7 @@ function CourseVideosStep({ courseId, videos, onVideosChange }: CourseVideosStep
                     <th className="w-[58%] px-6 py-3">Video</th>
                     <th className="w-[18%] px-6 py-3">Title</th>
                     <th className="px-6 py-3">Status</th>
-                    <th className="w-20 px-6 py-3 text-right">Actions</th>
+                    <th className="w-28 whitespace-nowrap px-6 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -333,11 +353,24 @@ function CourseVideosStep({ courseId, videos, onVideosChange }: CourseVideosStep
                           {video.status}
                         </span>
                       </td>
-                      <td className="px-6 py-5 text-right">
+                      <td className="w-28 whitespace-nowrap px-6 py-5 text-right">
+                        <button
+                          aria-label={`Edit ${video.title}`}
+                          className="mr-1 inline-flex rounded-md p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-950"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            editVideo(video);
+                          }}
+                          type="button">
+                          <Pencil className="size-4" />
+                        </button>
                         <button
                           aria-label={`Delete ${video.originalFileName}`}
-                          className="rounded-md p-1.5 text-slate-500 transition hover:bg-red-50 hover:text-red-600"
-                          onClick={() => setVideoToDelete(video)}
+                          className="inline-flex rounded-md p-1.5 text-slate-500 transition hover:bg-red-50 hover:text-red-600"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setVideoToDelete(video);
+                          }}
                           type="button">
                           <Trash2 className="size-4" />
                         </button>
@@ -353,7 +386,7 @@ function CourseVideosStep({ courseId, videos, onVideosChange }: CourseVideosStep
         </CardContent>
       </Card>
       <ConfigureVideoDialog
-        key={pendingVideo?.file.name ?? "configure-video"}
+        key={pendingVideo?.videoId ?? pendingVideo?.file.name ?? "configure-video"}
         courseId={courseId}
         configuration={pendingVideo}
         onClose={() => setPendingVideo(null)}

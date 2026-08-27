@@ -17,7 +17,7 @@ export const APP_AUTH_ROUTES_MODULE_ARRAY: AuthRoutersArrayInterface[] = [
     subModule: [],
   },
   {
-    label: "Verify Otp",
+    label: "Reset Password",
     path: "/reset-password",
     module: <ResetPasswordPage />,
     subModule: [],
