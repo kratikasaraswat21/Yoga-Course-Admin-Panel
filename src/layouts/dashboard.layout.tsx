@@ -14,6 +14,7 @@ import { LoaderCircle } from "lucide-react";
 function DashboardLayout() {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   const openSidebar = () => setIsSidebarOpen(true);
@@ -35,6 +36,7 @@ function DashboardLayout() {
       const response = await multipleApiHandler([{ endPoint: "auth/verify/me", protected: true, method: "GET" }]);
 
       const res = response[0];
+      console.log("PROD LOGS", res);
       if (!res?.data?.success) {
         toast.add({
           title: ERROR_MESSAGES.SESSION_EXPIRED_TITLE,
@@ -42,8 +44,10 @@ function DashboardLayout() {
           type: "error",
         });
         clearLocalSessionStorage();
-        navigate("/auth/login");
-        return;
+        setTimeout(() => {
+          navigate("/auth/login");
+          return;
+        }, 100);
       }
 
       setIsCheckingAuth(false);
@@ -74,7 +78,12 @@ function DashboardLayout() {
 
   return (
     <div className="flex h-dvh items-stretch w-full max-w-full overflow-hidden bg-slate-100 text-slate-950">
-      <DashboardSidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
+      <DashboardSidebar
+        isCollapsed={isSidebarCollapsed}
+        isOpen={isSidebarOpen}
+        onClose={closeSidebar}
+        onToggleCollapse={() => setIsSidebarCollapsed((current) => !current)}
+      />
 
       <div className="flex  min-h-0 min-w-0 flex-col overflow-hidden w-full">
         <DashboardNavbar onOpenSidebar={openSidebar} />
