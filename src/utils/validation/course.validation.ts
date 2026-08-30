@@ -2,6 +2,8 @@ import type { AddCourseDetails } from "@/modules/course/add-course/add-course.ty
 import { ERROR_MESSAGES } from "@/utils/constants/error.constants";
 import type { CourseFormData, CourseFormErrors } from "@/utils/interface/course.interface";
 
+const hasRichTextContent = (value: string) => value.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim().length > 0;
+
 export type AddCourseDetailsErrors = Partial<
   Record<"title" | "description" | "price" | "discountPercentage" | "totalPayableAmount" | "thumbnailURL", string>
 >;
@@ -10,7 +12,7 @@ export const validateCourseForm = (formData: CourseFormData) => {
   const errors: CourseFormErrors = {};
 
   if (!formData.title.trim()) errors.title = ERROR_MESSAGES.COURSE_TITLE_REQUIRED;
-  if (!formData.description.trim()) errors.description = ERROR_MESSAGES.COURSE_DESCRIPTION_REQUIRED;
+  if (!hasRichTextContent(formData.description)) errors.description = ERROR_MESSAGES.COURSE_DESCRIPTION_REQUIRED;
 
   const price = Number(formData.price);
   if (formData.price === "" || !Number.isFinite(price) || price < 0) {
@@ -38,7 +40,7 @@ export const validateAddCourseDetails = (details: AddCourseDetails) => {
   const totalPayableAmount = price - (price * discountPercentage) / 100;
 
   if (!details.title.trim()) errors.title = ERROR_MESSAGES.COURSE_TITLE_REQUIRED;
-  if (!details.description.trim()) errors.description = ERROR_MESSAGES.COURSE_DESCRIPTION_REQUIRED;
+  if (!hasRichTextContent(details.description)) errors.description = ERROR_MESSAGES.COURSE_DESCRIPTION_REQUIRED;
   if (details.price === "" || !Number.isFinite(price) || price <= 0) {
     errors.price = ERROR_MESSAGES.COURSE_PRICE_INVALID;
   }

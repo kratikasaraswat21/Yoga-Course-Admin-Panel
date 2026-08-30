@@ -3,6 +3,7 @@ import { BarChart3, BookOpen, MoreHorizontal, Pencil, Percent, Send, Star, Trash
 import CourseStatusBadge from "@/components/course/course-status-badge.component";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import RichTextContent from "@/components/ui/rich-text-content";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -161,7 +162,7 @@ function CourseTable({ courses, isLoading = false, onDelete, onEdit, onPublish, 
                     </div>
                     <div className="min-w-0">
                       <p className="truncate font-medium">{course.title}</p>
-                      <p className="mt-1 truncate text-xs text-slate-500">{course.description}</p>
+                      <RichTextContent className="mt-1 truncate text-xs text-slate-500" html={course.description} />
                     </div>
                   </div>
                 </TableCell>
@@ -207,7 +208,7 @@ function CourseTable({ courses, isLoading = false, onDelete, onEdit, onPublish, 
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="font-medium leading-5">{course.title}</p>
-                  <p className="mt-1 line-clamp-1 text-xs text-slate-500">{course.description}</p>
+                  <RichTextContent className="mt-1 line-clamp-1 text-xs text-slate-500" html={course.description} />
                 </div>
                 <CourseActions course={course} onAnalytics={onAnalytics} onDelete={onDelete} onEdit={onEdit} onPublish={onPublish} />
               </div>

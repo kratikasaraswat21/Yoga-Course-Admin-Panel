@@ -11,7 +11,9 @@ export const validatePdfCourseForm = (formData: PdfCourseFormData) => {
   }
 
   if (!formData.title.trim()) errors.title = ERROR_MESSAGES.PDF_TITLE_REQUIRED;
-  if (!formData.description.trim()) errors.description = ERROR_MESSAGES.PDF_DESCRIPTION_REQUIRED;
+  if (!formData.description.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim()) {
+    errors.description = ERROR_MESSAGES.PDF_DESCRIPTION_REQUIRED;
+  }
   if (!formData.fileUrl) errors.fileUrl = ERROR_MESSAGES.PDF_FILE_REQUIRED;
   if (!formData.thumbnailUrl) errors.thumbnailUrl = ERROR_MESSAGES.PDF_THUMBNAIL_REQUIRED;
 

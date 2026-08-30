@@ -19,6 +19,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import RichTextContent from "@/components/ui/rich-text-content";
 import {
   Dialog,
   DialogContent,
@@ -488,9 +489,11 @@ function CourseAnalyticsPage() {
               <h1 className="text-2xl font-semibold tracking-tight">{course.title}</h1>
               <StatusBadge status={course.status} />
             </div>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-              {course.description || "No course description available."}
-            </p>
+            <RichTextContent
+              className="mt-2 max-w-3xl text-sm leading-6 text-slate-500"
+              fallback="No course description available."
+              html={course.description}
+            />
             <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm">
               <span>
                 Price: <strong>{formatCoursePrice(course.price)}</strong>
@@ -830,9 +833,11 @@ function CourseAnalyticsPage() {
                           <h3 className="font-semibold">{video.title}</h3>
                           <StatusBadge status={video.status} />
                         </div>
-                        <p className="mt-1 line-clamp-2 text-sm text-slate-500">
-                          {video.description || "No description available."}
-                        </p>
+                        <RichTextContent
+                          className="mt-1 line-clamp-2 text-sm text-slate-500"
+                          fallback="No description available."
+                          html={video.description}
+                        />
                         <div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-500">
                           <span className="inline-flex items-center gap-1">
                             <Clock3 className="size-3.5" />

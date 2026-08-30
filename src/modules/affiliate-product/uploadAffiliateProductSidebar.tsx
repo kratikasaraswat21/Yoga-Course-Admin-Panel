@@ -13,7 +13,7 @@ import { Drawer, DrawerClose, DrawerContent, DrawerFooter, DrawerHeader, DrawerT
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import RichTextEditor from "@/components/ui/rich-text-editor";
 import { toast } from "@/components/ui/variants/toast.manager";
 import { useDebounce } from "@/hooks/useDebounce";
 import { multipleApiHandler } from "@/utils/api/multiple.api";
@@ -240,10 +240,10 @@ function UploadAffiliateProductSidebar({
                 <Label htmlFor="affiliate-description">
                   Description <span className="font-normal text-slate-400">(optional)</span>
                 </Label>
-                <Textarea
-                  className="min-h-28 resize-y bg-white"
+                <RichTextEditor
                   id="affiliate-description"
-                  onChange={(event) => updateField("description", event.target.value)}
+                  minHeight="min-h-28"
+                  onChange={(value) => updateField("description", value)}
                   placeholder="Describe this product..."
                   value={formData.description}
                 />

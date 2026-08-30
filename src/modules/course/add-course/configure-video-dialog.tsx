@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import RichTextEditor from "@/components/ui/rich-text-editor";
 import { toast } from "@/components/ui/variants/toast.manager";
 import { multipleApiHandler, type CommonDataFormat } from "@/utils/api/multiple.api";
 import { ERROR_MESSAGES } from "@/utils/constants/error.constants";
@@ -510,10 +510,11 @@ function ConfigureVideoDialog({ courseId, configuration, onClose, onConfirm, fet
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="video-description">Description (optional)</Label>
-                  <Textarea
-                    className="min-h-40 resize-y"
+                  <RichTextEditor
                     id="video-description"
-                    onChange={(event) => updateFormData("description", event.target.value)}
+                    minHeight="min-h-40"
+                    onChange={(value) => updateFormData("description", value)}
+                    placeholder="Add a description for this video..."
                     value={formData.description}
                   />
                 </div>

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import RichTextEditor from "@/components/ui/rich-text-editor";
 
 import { toast } from "@/components/ui/variants/toast.manager";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -312,11 +312,10 @@ function CourseDetailsStep({
             </div>
             <div className="space-y-2">
               <Label htmlFor="course-description">Description</Label>
-              <Textarea
-                aria-invalid={Boolean(errors.description)}
-                className="min-h-30 resize-y bg-white"
+              <RichTextEditor
+                className="bg-white"
                 id="course-description"
-                onChange={(event) => update("description", event.target.value)}
+                onChange={(value) => update("description", value)}
                 placeholder="Describe what students will learn in this course..."
                 value={details.description}
               />

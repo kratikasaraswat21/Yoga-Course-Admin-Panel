@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import RichTextContent from "@/components/ui/rich-text-content";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -288,7 +289,7 @@ function PdfCourseManagementPage() {
                             {pdf.status}
                           </span>
                         </div>
-                        <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-500">{pdf.description}</p>
+                        <RichTextContent className="mt-1 line-clamp-2 text-sm leading-5 text-slate-500" html={pdf.description} />
                       </div>
                       <div className="flex items-center justify-end gap-2">
                         <ActionTooltip label="Edit course">

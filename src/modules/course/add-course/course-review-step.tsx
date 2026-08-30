@@ -3,6 +3,7 @@ import { CheckCircle2, Play, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/variants/toast.manager";
+import RichTextContent from "@/components/ui/rich-text-content";
 import { useDebounce } from "@/hooks/useDebounce";
 import { multipleApiHandler } from "@/utils/api/multiple.api";
 import { formatCourseVideos } from "@/utils/helper/course-video.helper";
@@ -103,7 +104,7 @@ function CourseReviewStep({
             </div>
             <div className="grid grid-cols-[minmax(110px,35%)_1fr] gap-4">
               <span className="text-slate-500">Description</span>
-              <span className="leading-6">{courseDescription || "Loading..."}</span>
+              <RichTextContent className="leading-6" fallback="Loading..." html={courseDescription} />
             </div>
             <div className="grid grid-cols-[minmax(110px,35%)_1fr] gap-4">
               <span className="text-slate-500">Course ID</span>
