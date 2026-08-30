@@ -263,7 +263,7 @@ function CourseVideosStep({ courseId, videos, onVideosChange }: CourseVideosStep
               <UploadCloud className="size-6" />
             </span>
             <p className="mt-4 text-sm font-bold">Drag and drop your course video here</p>
-            <p className="mt-1 text-sm text-slate-500">MP4, MOV, or WebM · max upload 50 GB · max duration 2 hours</p>
+            <p className="mt-1 text-sm text-slate-500">MP4, MOV, or WebM · max upload 50 GB · no duration limit</p>
             <input
               accept="video/mp4,video/quicktime,video/webm"
               className="sr-only"
