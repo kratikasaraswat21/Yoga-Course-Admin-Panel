@@ -52,6 +52,7 @@ function DashboardLayout() {
 
       setIsCheckingAuth(false);
     } catch {
+      clearLocalSessionStorage();
       setIsCheckingAuth(false);
       toast.add({
         title: ERROR_MESSAGES.SESSION_VERIFY_TITLE,
