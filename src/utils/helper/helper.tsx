@@ -53,11 +53,19 @@ export const clearLocalSessionStorage = () => {
   localStorage.clear();
   sessionStorage.clear();
 
-  const cookieConfig: CookieConfigInterface = getCookieConfig();
-  Object.keys(Cookies.get()).forEach((cookieName) => {
-    Cookies.remove(cookieName, cookieConfig);
-    // Also remove host-only cookies, which do not match the configured domain.
-    Cookies.remove(cookieName, { path: "/" });
+  const cookieNames = Object.keys(Cookies.get());
+  const cookieDomains = [
+    undefined,
+    "admin.kratikayoga.com",
+    ".admin.kratikayoga.com",
+    "kratikayoga.com",
+    ".kratikayoga.com",
+  ];
+
+  cookieNames.forEach((cookieName) => {
+    cookieDomains.forEach((domain) => {
+      Cookies.remove(cookieName, { domain, path: "/" });
+    });
   });
 };
 

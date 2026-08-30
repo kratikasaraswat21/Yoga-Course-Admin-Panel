@@ -5,8 +5,12 @@ import { getDataFromSecureCookie } from "@/utils/helper/helper";
 import RedirectToDashboard from "@/utils/lib/redirectToDashboard";
 import { Navigate, Route, Routes } from "react-router-dom";
 
+const AUTH_VERIFICATION_FAILED_KEY = "yoga_platform_auth_verification_failed";
+
 function AuthRoutes() {
-  if (getDataFromSecureCookie("yoga_platform_auth_token")) {
+  const hasFailedVerification = sessionStorage.getItem(AUTH_VERIFICATION_FAILED_KEY) === "true";
+
+  if (getDataFromSecureCookie("yoga_platform_auth_token") && !hasFailedVerification) {
     return <Navigate replace to="/dashboard" />;
   }
 

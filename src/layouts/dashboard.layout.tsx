@@ -11,6 +11,8 @@ import { SUCCESS_MESSAGES } from "@/utils/constants/success.constants";
 import { clearLocalSessionStorage, getDataFromSecureCookie } from "@/utils/helper/helper";
 import { LoaderCircle } from "lucide-react";
 
+const AUTH_VERIFICATION_FAILED_KEY = "yoga_platform_auth_verification_failed";
+
 function DashboardLayout() {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -38,6 +40,7 @@ function DashboardLayout() {
       const res = response[0];
       if (!res?.data?.success) {
         clearLocalSessionStorage();
+        sessionStorage.setItem(AUTH_VERIFICATION_FAILED_KEY, "true");
         toast.add({
           title: ERROR_MESSAGES.SESSION_EXPIRED_TITLE,
           description: res?.data?.message ?? ERROR_MESSAGES.SESSION_EXPIRED_DESCRIPTION,
@@ -50,6 +53,7 @@ function DashboardLayout() {
       setIsCheckingAuth(false);
     } catch {
       clearLocalSessionStorage();
+      sessionStorage.setItem(AUTH_VERIFICATION_FAILED_KEY, "true");
       toast.add({
         title: ERROR_MESSAGES.SESSION_VERIFY_TITLE,
         description: ERROR_MESSAGES.SESSION_VERIFY_DESCRIPTION,
