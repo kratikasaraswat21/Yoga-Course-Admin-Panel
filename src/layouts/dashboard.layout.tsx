@@ -30,35 +30,32 @@ function DashboardLayout() {
           type: "error",
         });
         clearLocalSessionStorage();
-        navigate("/auth/login");
+        navigate("/auth/login", { replace: true });
         return;
       }
       const response = await multipleApiHandler([{ endPoint: "auth/verify/me", protected: true, method: "GET" }]);
 
       const res = response[0];
-      console.log("PROD LOGS", res);
       if (!res?.data?.success) {
+        clearLocalSessionStorage();
         toast.add({
           title: ERROR_MESSAGES.SESSION_EXPIRED_TITLE,
           description: res?.data?.message ?? ERROR_MESSAGES.SESSION_EXPIRED_DESCRIPTION,
           type: "error",
         });
-        clearLocalSessionStorage();
-        setTimeout(() => {
-          navigate("/auth/login");
-          return;
-        }, 100);
+        navigate("/auth/login", { replace: true });
+        return;
       }
 
       setIsCheckingAuth(false);
     } catch {
       clearLocalSessionStorage();
-      setIsCheckingAuth(false);
       toast.add({
         title: ERROR_MESSAGES.SESSION_VERIFY_TITLE,
         description: ERROR_MESSAGES.SESSION_VERIFY_DESCRIPTION,
         type: "error",
       });
+      navigate("/auth/login", { replace: true });
     }
   }, 100);
 

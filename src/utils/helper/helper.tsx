@@ -56,6 +56,8 @@ export const clearLocalSessionStorage = () => {
   const cookieConfig: CookieConfigInterface = getCookieConfig();
   Object.keys(Cookies.get()).forEach((cookieName) => {
     Cookies.remove(cookieName, cookieConfig);
+    // Also remove host-only cookies, which do not match the configured domain.
+    Cookies.remove(cookieName, { path: "/" });
   });
 };
 
