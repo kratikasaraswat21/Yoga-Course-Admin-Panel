@@ -468,10 +468,9 @@ function ConfigureVideoDialog({ courseId, configuration, onClose, onConfirm, fet
   return (
     <AlertDialog onOpenChange={(open) => !open && onClose()} open={Boolean(configuration)}>
       <AlertDialogContent
-        className="relative gap-5 p-0"
+        className="relative flex max-h-[calc(100dvh-2rem)] flex-col gap-5 overflow-hidden p-0"
         style={{
           maxWidth: "850px",
-          overflowY: "auto",
           position: "fixed",
         }}>
         <AlertDialogHeader className="text-left">
@@ -496,28 +495,29 @@ function ConfigureVideoDialog({ courseId, configuration, onClose, onConfirm, fet
           </div>
         </AlertDialogHeader>
         {configuration && (
-          <div className="grid gap-5 lg:grid-cols-2 p-6">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="video-title">Video title</Label>
-                <Input
-                  aria-invalid={Boolean(errors.title)}
-                  id="video-title"
-                  onChange={(event) => updateFormData("title", event.target.value)}
-                  value={formData.title}
-                />
-                {errors.title && <p className="text-sm text-red-600">{errors.title}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="video-description">Description (optional)</Label>
-                <Textarea
-                  className="min-h-40 resize-y"
-                  id="video-description"
-                  onChange={(event) => updateFormData("description", event.target.value)}
-                  value={formData.description}
-                />
-              </div>
-              {!isEditing && (
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            <div className="grid gap-5 p-6 lg:grid-cols-2">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="video-title">Video title</Label>
+                  <Input
+                    aria-invalid={Boolean(errors.title)}
+                    id="video-title"
+                    onChange={(event) => updateFormData("title", event.target.value)}
+                    value={formData.title}
+                  />
+                  {errors.title && <p className="text-sm text-red-600">{errors.title}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="video-description">Description (optional)</Label>
+                  <Textarea
+                    className="min-h-40 resize-y"
+                    id="video-description"
+                    onChange={(event) => updateFormData("description", event.target.value)}
+                    value={formData.description}
+                  />
+                </div>
+                {!isEditing && (
                 <Card className="gap-0 overflow-hidden rounded-2xl bg-gray-100/10 p-0 shadow-sm ring-0 border border-slate-400">
                   <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-200/80 px-4 py-3 text-sm font-semibold text-slate-950">
                     <span className="flex size-7 items-center justify-center rounded-md bg-white text-slate-700 shadow-sm ring-1 ring-slate-200">
@@ -550,11 +550,11 @@ function ConfigureVideoDialog({ courseId, configuration, onClose, onConfirm, fet
                     </div>
                   </dl>
                 </Card>
-              )}
-            </div>
-            <div className="space-y-3">
-              <Label>Thumbnail</Label>
-              <div className="rounded-xl border border-slate-800 p-4">
+                )}
+              </div>
+              <div className="space-y-3">
+                <Label>Thumbnail</Label>
+                <div className="rounded-xl border border-slate-800 p-4">
                 <span className="text-sm font-medium">Custom thumbnail</span>
                 <div
                   className={`relative mt-3 flex min-h-40 w-full cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border border-dashed p-4 text-center transition ${isThumbnailDragging ? "border-blue-500 bg-blue-50" : "border-slate-400 bg-slate-50/40"}`}
@@ -630,11 +630,12 @@ function ConfigureVideoDialog({ courseId, configuration, onClose, onConfirm, fet
                   </>
                 )}
                 {errors.thumbnailFile && <p className="mt-2 text-sm text-red-600">{errors.thumbnailFile}</p>}
+                </div>
               </div>
             </div>
           </div>
         )}
-        <div className="p-6 pt-0">
+        <div className="shrink-0 p-6 pt-0">
           <AlertDialogFooter className="-mx-6 -mb-6 flex-row justify-end gap-3 border-t p-5">
             <Button
               className="h-11 px-6"
