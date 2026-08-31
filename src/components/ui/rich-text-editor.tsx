@@ -1,6 +1,11 @@
 import { EditorContent, useEditor } from "@tiptap/react";
+import TextAlign from "@tiptap/extension-text-align";
 import StarterKit from "@tiptap/starter-kit";
 import {
+  AlignCenter,
+  AlignJustify,
+  AlignLeft,
+  AlignRight,
   Bold,
   Code2,
   Heading1,
@@ -69,7 +74,13 @@ function ToolbarButton({
 
 function RichTextEditor({ id, value, onChange, placeholder, className, minHeight = "min-h-36" }: RichTextEditorProps) {
   const editor = useEditor({
-    extensions: [StarterKit],
+    extensions: [
+      StarterKit,
+      TextAlign.configure({
+        alignments: ["start", "center", "end", "justify"],
+        types: ["heading", "paragraph"],
+      }),
+    ],
     content: value,
     editorProps: {
       attributes: {
@@ -98,6 +109,10 @@ function RichTextEditor({ id, value, onChange, placeholder, className, minHeight
         <ToolbarButton label="Heading 1" icon={<Heading1 className="size-4" />} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} active={editor.isActive("heading", { level: 1 })} />
         <ToolbarButton label="Heading 2" icon={<Heading2 className="size-4" />} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive("heading", { level: 2 })} />
         <ToolbarButton label="Heading 3" icon={<Heading3 className="size-4" />} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} active={editor.isActive("heading", { level: 3 })} />
+        <ToolbarButton label="Align start" icon={<AlignLeft className="size-4" />} onClick={() => editor.chain().focus().setTextAlign("start").run()} active={editor.isActive({ textAlign: "start" })} />
+        <ToolbarButton label="Align center" icon={<AlignCenter className="size-4" />} onClick={() => editor.chain().focus().setTextAlign("center").run()} active={editor.isActive({ textAlign: "center" })} />
+        <ToolbarButton label="Align end" icon={<AlignRight className="size-4" />} onClick={() => editor.chain().focus().setTextAlign("end").run()} active={editor.isActive({ textAlign: "end" })} />
+        <ToolbarButton label="Justify" icon={<AlignJustify className="size-4" />} onClick={() => editor.chain().focus().setTextAlign("justify").run()} active={editor.isActive({ textAlign: "justify" })} />
         <ToolbarButton label="Bullet list" icon={<List className="size-4" />} onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive("bulletList")} />
         <ToolbarButton label="Numbered list" icon={<ListOrdered className="size-4" />} onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive("orderedList")} />
         <ToolbarButton label="Blockquote" icon={<Quote className="size-4" />} onClick={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive("blockquote")} />
