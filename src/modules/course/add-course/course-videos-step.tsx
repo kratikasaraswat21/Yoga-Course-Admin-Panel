@@ -1,5 +1,16 @@
-import { GripVertical, LoaderCircle, Pencil, RefreshCw, Trash2, UploadCloud, Video, X } from "lucide-react";
-import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react";
+import {
+  FolderPlus,
+  GripVertical,
+  LoaderCircle,
+  Lock,
+  Pencil,
+  RefreshCw,
+  Trash2,
+  UploadCloud,
+  Video,
+  X,
+} from "lucide-react";
+import { Fragment, useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 
 import {
   AlertDialog,
@@ -17,11 +28,30 @@ import { multipleApiHandler } from "@/utils/api/multiple.api";
 import { ERROR_MESSAGES } from "@/utils/constants/error.constants";
 import { SUCCESS_MESSAGES } from "@/utils/constants/success.constants";
 import { formatCourseVideos } from "@/utils/helper/course-video.helper";
+import { formatScheduleDate } from "@/utils/helper/ist-date.helper";
 import { validateCourseVideoFile } from "@/utils/validation/course-video.validation";
 
 import { useDebounce } from "@/hooks/useDebounce";
 import ConfigureVideoDialog from "@/modules/course/add-course/configure-video-dialog";
-import type { CourseVideo, CourseVideoConfiguration } from "./add-course.types";
+import type { CourseVideo, CourseVideoConfiguration, CourseVideoGroup } from "./add-course.types";
+import VideoGroupHeader from "./video-group-header";
+
+/** Groups in order with their videos, plus ungrouped videos last (group null). */
+type VideoLayout = { group: CourseVideoGroup | null; videos: CourseVideo[] }[];
+
+const buildLayout = (videos: CourseVideo[], groups: CourseVideoGroup[]): VideoLayout => {
+  const groupIds = new Set(groups.map((group) => group.id));
+  return [
+    ...groups.map((group) => ({
+      group,
+      videos: videos.filter((video) => video.groupId === group.id),
+    })),
+    {
+      group: null,
+      videos: videos.filter((video) => !video.groupId || !groupIds.has(video.groupId)),
+    },
+  ];
+};
 
 interface CourseVideosStepProps {
   courseId: string;
@@ -40,6 +70,11 @@ function CourseVideosStep({ courseId, videos, onVideosChange }: CourseVideosStep
   const [draggedVideoId, setDraggedVideoId] = useState<string | null>(null);
   const [dragOverVideoId, setDragOverVideoId] = useState<string | null>(null);
   const [videoToDelete, setVideoToDelete] = useState<CourseVideo | null>(null);
+  const [groups, setGroups] = useState<CourseVideoGroup[]>([]);
+  const [dragOverGroupKey, setDragOverGroupKey] = useState<string | null>(null);
+  const [isAddingGroup, setIsAddingGroup] = useState(false);
+  // Group to preselect in the upload dialog ("Upload video" inside a group).
+  const uploadGroupIdRef = useRef("");
 
   const fetchVideos = useDebounce(async () => {
     if (!courseId) {
@@ -54,8 +89,15 @@ function CourseVideosStep({ courseId, videos, onVideosChange }: CourseVideosStep
           method: "GET",
           protected: true,
         },
+        {
+          endPoint: `/uploads/videos/groups?courseId=${encodeURIComponent(courseId)}`,
+          method: "GET",
+          protected: true,
+        },
       ]);
       const result = response[0];
+      const apiGroups = response[1]?.data?.data?.groups;
+      if (Array.isArray(apiGroups)) setGroups(apiGroups as CourseVideoGroup[]);
       const payload = result?.data?.data;
       const apiVideos = Array.isArray(payload) ? payload : (payload?.videos ?? payload?.data ?? []);
 
@@ -87,7 +129,7 @@ function CourseVideosStep({ courseId, videos, onVideosChange }: CourseVideosStep
     window.setTimeout(() => setIsRefreshing(false), 1000);
   };
 
-  const reorderVideos = useDebounce(async (payload: { courseId: string; sortOrder: number; orderedIds: string[] }) => {
+  const reorderVideos = useDebounce(async (payload: Record<string, unknown>) => {
     const response = await multipleApiHandler([
       {
         endPoint: "/uploads/videos/reorder",
@@ -105,35 +147,120 @@ function CourseVideosStep({ courseId, videos, onVideosChange }: CourseVideosStep
     if (result?.data?.success) fetchVideos();
   }, 100);
 
-  const handleVideoDrop = (targetVideoId: string) => {
-    if (!draggedVideoId || draggedVideoId === targetVideoId) {
-      setDraggedVideoId(null);
-      setDragOverVideoId(null);
+  const clearDragState = () => {
+    setDraggedVideoId(null);
+    setDragOverVideoId(null);
+    setDragOverGroupKey(null);
+  };
+
+  // With groups, every change sends the full layout (group order, each video's group, video order).
+  const saveLayout = (layout: VideoLayout) => {
+    const orderedVideos = layout.flatMap(({ group, videos: groupVideos }) =>
+      groupVideos.map((video) => ({ ...video, groupId: group?.id ?? null })),
+    );
+    onVideosChange(orderedVideos);
+    setGroups(layout.flatMap(({ group }) => (group ? [group] : [])));
+    reorderVideos({
+      courseId,
+      layout: layout.map(({ group, videos: groupVideos }) => ({
+        groupId: group?.id ?? null,
+        videoIds: groupVideos.map((video) => video.id),
+      })),
+    });
+  };
+
+  /** Moves the dragged video before `targetVideoId`, or to the end of the group when dropped on its header. */
+  const moveDraggedVideo = (target: { videoId?: string; groupId?: string | null }) => {
+    if (!draggedVideoId || draggedVideoId === target.videoId) return clearDragState();
+    const draggedVideo = videos.find((video) => video.id === draggedVideoId);
+    if (!draggedVideo) return clearDragState();
+
+    const sourceIndex = videos.findIndex((video) => video.id === draggedVideoId);
+    const targetIndex = target.videoId ? videos.findIndex((video) => video.id === target.videoId) : -1;
+
+    if (groups.length === 0) {
+      // No groups: the original flat reorder (the dragged video takes the target's position).
+      if (targetIndex < 0) return clearDragState();
+      const reorderedVideos = [...videos];
+      const [movedVideo] = reorderedVideos.splice(sourceIndex, 1);
+      reorderedVideos.splice(targetIndex, 0, movedVideo);
+      onVideosChange(reorderedVideos);
+      clearDragState();
+      reorderVideos({
+        courseId,
+        orderedIds: reorderedVideos.map((video) => video.id),
+      });
       return;
     }
 
-    const sourceIndex = videos.findIndex((video) => video.id === draggedVideoId);
-    const targetIndex = videos.findIndex((video) => video.id === targetVideoId);
-    if (sourceIndex < 0 || targetIndex < 0) return;
+    const layout = buildLayout(videos, groups).map((entry) => ({
+      ...entry,
+      videos: entry.videos.filter((video) => video.id !== draggedVideoId),
+    }));
+    if (target.videoId) {
+      const entry = layout.find((item) => item.videos.some((video) => video.id === target.videoId));
+      if (!entry) return clearDragState();
+      // Same as the flat list: dragging down places the video after the target, dragging up before it.
+      const position = entry.videos.findIndex((video) => video.id === target.videoId);
+      entry.videos.splice(sourceIndex < targetIndex ? position + 1 : position, 0, draggedVideo);
+    } else {
+      const entry = layout.find((item) => (item.group?.id ?? null) === (target.groupId ?? null));
+      if (!entry) return clearDragState();
+      entry.videos.push(draggedVideo);
+    }
+    clearDragState();
+    saveLayout(layout);
+  };
 
-    const reorderedVideos = [...videos];
-    const [movedVideo] = reorderedVideos.splice(sourceIndex, 1);
-    reorderedVideos.splice(targetIndex, 0, movedVideo);
-    onVideosChange(reorderedVideos);
-    setDraggedVideoId(null);
-    setDragOverVideoId(null);
-    reorderVideos({
-      courseId,
-      orderedIds: reorderedVideos.map((video) => video.id),
-      sortOrder: targetIndex,
+  const handleVideoDrop = (targetVideoId: string) => moveDraggedVideo({ videoId: targetVideoId });
+
+  const moveGroup = (groupId: string, direction: -1 | 1) => {
+    const layout = buildLayout(videos, groups);
+    const index = layout.findIndex((entry) => entry.group?.id === groupId);
+    const swapIndex = index + direction;
+    if (index < 0 || swapIndex < 0 || !layout[swapIndex]?.group) return;
+    [layout[index], layout[swapIndex]] = [layout[swapIndex], layout[index]];
+    saveLayout(layout);
+  };
+
+  const groupRequest = async (
+    endPoint: string,
+    method: "POST" | "PUT" | "DELETE",
+    data?: unknown,
+    successTitle?: string,
+  ) => {
+    const response = await multipleApiHandler([{ endPoint, method, protected: true, data }]);
+    const result = response[0];
+    toast.add({
+      title: result?.data?.success ? (successTitle ?? "Saved") : "Something went wrong",
+      description: result?.data?.message ?? "",
+      type: result?.data?.success ? "success" : "error",
     });
+    if (result?.data?.success) fetchVideos(false);
+    return Boolean(result?.data?.success);
+  };
+
+  const addGroup = async () => {
+    setIsAddingGroup(true);
+    // Suggest the next week number; the admin can rename it.
+    await groupRequest(
+      "/uploads/videos/groups",
+      "POST",
+      { courseId, title: `Week ${groups.length + 1}` },
+      "Group added",
+    );
+    setIsAddingGroup(false);
   };
 
   const addVideo = async (file?: File) => {
     if (!file) return;
     const fileError = validateCourseVideoFile(file);
     if (fileError) {
-      toast.add({ description: fileError, title: ERROR_MESSAGES.COURSE_VIDEO_UPLOAD_FAILED_TITLE, type: "error" });
+      toast.add({
+        description: fileError,
+        title: ERROR_MESSAGES.COURSE_VIDEO_UPLOAD_FAILED_TITLE,
+        type: "error",
+      });
       return;
     }
 
@@ -148,12 +275,17 @@ function CourseVideosStep({ courseId, videos, onVideosChange }: CourseVideosStep
         thumbnailUrl: "",
         thumbnailId: "",
         title: file.name.replace(/\.[^/.]+$/, ""),
+        releaseDate: "",
+        groupId: uploadGroupIdRef.current,
       },
     });
+    uploadGroupIdRef.current = "";
   };
 
   const editVideo = (video: CourseVideo) => {
-    const file = new File([], video.originalFileName, { type: video.fileType || "video/mp4" });
+    const file = new File([], video.originalFileName, {
+      type: video.fileType || "video/mp4",
+    });
 
     setPendingVideo({
       durationSeconds: video.durationSeconds ?? 0,
@@ -165,6 +297,8 @@ function CourseVideosStep({ courseId, videos, onVideosChange }: CourseVideosStep
         thumbnailUrl: video.thumbnailUrl ?? "",
         thumbnailId: video.thumbnailId ?? "",
         title: video.title ?? "",
+        releaseDate: video.releaseDate ?? "",
+        groupId: video.groupId ?? "",
       },
       videoId: video.id,
     });
@@ -219,12 +353,82 @@ function CourseVideosStep({ courseId, videos, onVideosChange }: CourseVideosStep
       title: res?.data?.success ? "Video deleted" : "Video deletion failed",
       type: res?.data?.success ? "success" : "error",
     });
+    if (res?.data?.success) fetchVideos(false);
   });
 
   const handelDeleteYogaVideo = (videoId: string) => {
     handelDeleteVideoWithDebounce(videoId);
     setVideoToDelete(null);
   };
+
+  const renderVideoRow = (video: CourseVideo) => (
+    <tr
+      className={`border-b transition-shadow last:border-0 ${dragOverVideoId === video.id ? "ring-2 ring-slate-900" : ""} ${draggedVideoId === video.id ? "opacity-50" : ""}`}
+      draggable
+      key={video.id}
+      onDragEnd={clearDragState}
+      onDragOver={(event) => {
+        event.preventDefault();
+        if (draggedVideoId !== video.id) setDragOverVideoId(video.id);
+      }}
+      onDragStart={() => setDraggedVideoId(video.id)}
+      onDrop={() => handleVideoDrop(video.id)}>
+      <td className="px-6 py-5 text-center">
+        <GripVertical className="mx-auto size-5 text-slate-600" />
+      </td>
+      <td className="max-w-0 px-6 py-5">
+        <span className="flex min-w-0 items-center gap-3">
+          <span className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-slate-200 text-slate-500 ring-1 ring-slate-300">
+            {video.thumbnailUrl ? (
+              <img alt="" className="size-full object-cover" src={video.thumbnailUrl} />
+            ) : (
+              <Video className="size-6" />
+            )}
+          </span>
+          <span className="truncate text-slate-950">{video.originalFileName}</span>
+        </span>
+      </td>
+      <td className="max-w-0 px-6 py-5">
+        <span className="block truncate text-slate-950">{video.title}</span>
+        {video.isScheduled && video.releaseDate && (
+          <span className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">
+            <Lock className="size-3" /> Releases {formatScheduleDate(video.releaseDate)}
+          </span>
+        )}
+      </td>
+      <td className="px-6 py-5">
+        <span
+          className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold ${
+            video.status === "Ready" ? "bg-emerald-50 text-emerald-700" : "bg-blue-50 text-blue-700"
+          }`}>
+          <span className={`size-2 rounded-full ${video.status === "Ready" ? "bg-emerald-500" : "bg-blue-500"}`} />
+          {video.status}
+        </span>
+      </td>
+      <td className="w-28 whitespace-nowrap px-6 py-5 text-right">
+        <button
+          aria-label={`Edit ${video.title}`}
+          className="mr-1 inline-flex rounded-md p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-950"
+          onClick={(event) => {
+            event.stopPropagation();
+            editVideo(video);
+          }}
+          type="button">
+          <Pencil className="size-4" />
+        </button>
+        <button
+          aria-label={`Delete ${video.originalFileName}`}
+          className="inline-flex rounded-md p-1.5 text-slate-500 transition hover:bg-red-50 hover:text-red-600"
+          onClick={(event) => {
+            event.stopPropagation();
+            setVideoToDelete(video);
+          }}
+          type="button">
+          <Trash2 className="size-4" />
+        </button>
+      </td>
+    </tr>
+  );
 
   return (
     <div className="mx-auto w-full max-w-[1580px] space-y-3 px-4 py-5 sm:px-6 lg:px-6 xl:space-y-4">
@@ -284,11 +488,27 @@ function CourseVideosStep({ courseId, videos, onVideosChange }: CourseVideosStep
 
       <Card className="gap-0 overflow-hidden py-0">
         <CardHeader className="flex flex-row items-center justify-between border-b px-6 py-5">
-          <CardTitle className="text-base font-bold">Uploaded videos</CardTitle>
-          <Button className="h-9 gap-2 px-3" onClick={handleFetchAgain} type="button" variant="outline">
-            <RefreshCw className={`size-4 ${isRefreshing ? "animate-spin" : ""}`} />
-            Fetch again
-          </Button>
+          <div>
+            <CardTitle className="text-base font-bold">Uploaded videos</CardTitle>
+            <p className="mt-1 text-sm text-slate-500">
+              Optional: group videos into weeks. Drag a video onto another video or onto a week heading to move it.
+            </p>
+          </div>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              className="h-9 gap-2 px-3"
+              disabled={isAddingGroup || !courseId}
+              onClick={() => void addGroup()}
+              type="button"
+              variant="outline">
+              {isAddingGroup ? <LoaderCircle className="size-4 animate-spin" /> : <FolderPlus className="size-4" />}
+              Add week / group
+            </Button>
+            <Button className="h-9 gap-2 px-3" onClick={handleFetchAgain} type="button" variant="outline">
+              <RefreshCw className={`size-4 ${isRefreshing ? "animate-spin" : ""}`} />
+              Fetch again
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {isInitialLoading ? (
@@ -296,7 +516,7 @@ function CourseVideosStep({ courseId, videos, onVideosChange }: CourseVideosStep
               <LoaderCircle className="size-5 animate-spin" />
               Loading videos...
             </div>
-          ) : videos.length ? (
+          ) : videos.length || groups.length ? (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[900px] text-sm">
                 <thead>
@@ -309,74 +529,76 @@ function CourseVideosStep({ courseId, videos, onVideosChange }: CourseVideosStep
                   </tr>
                 </thead>
                 <tbody>
-                  {videos.map((video) => (
-                    <tr
-                      className={`border-b transition-shadow last:border-0 ${dragOverVideoId === video.id ? "ring-2 ring-slate-900" : ""} ${draggedVideoId === video.id ? "opacity-50" : ""}`}
-                      draggable
-                      key={video.id}
-                      onDragEnd={() => {
-                        setDraggedVideoId(null);
-                        setDragOverVideoId(null);
-                      }}
-                      onDragOver={(event) => {
-                        event.preventDefault();
-                        if (draggedVideoId !== video.id) setDragOverVideoId(video.id);
-                      }}
-                      onDragStart={() => setDraggedVideoId(video.id)}
-                      onDrop={() => handleVideoDrop(video.id)}>
-                      <td className="px-6 py-5 text-center">
-                        <GripVertical className="mx-auto size-5 text-slate-600" />
-                      </td>
-                      <td className="max-w-0 px-6 py-5">
-                        <span className="flex min-w-0 items-center gap-3">
-                          <span className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-slate-200 text-slate-500 ring-1 ring-slate-300">
-                            {video.thumbnailUrl ? (
-                              <img alt="" className="size-full object-cover" src={video.thumbnailUrl} />
-                            ) : (
-                              <Video className="size-6" />
+                  {groups.length === 0
+                    ? videos.map((video) => renderVideoRow(video))
+                    : buildLayout(videos, groups).map(({ group, videos: groupVideos }, index, layout) =>
+                        group === null && groupVideos.length === 0 ? null : (
+                          <Fragment key={group?.id ?? "ungrouped"}>
+                            <tr>
+                              <td className="p-0" colSpan={5}>
+                                <VideoGroupHeader
+                                  group={group}
+                                  isDropTarget={dragOverGroupKey === (group?.id ?? "ungrouped")}
+                                  isFirst={index === 0}
+                                  isLast={!layout[index + 1]?.group}
+                                  key={group ? `${group.id}-${group.title}` : "ungrouped"}
+                                  onDelete={() =>
+                                    void groupRequest(
+                                      `/uploads/videos/groups/${group?.id}`,
+                                      "DELETE",
+                                      undefined,
+                                      "Group deleted",
+                                    )
+                                  }
+                                  onDragOver={(event) => {
+                                    event.preventDefault();
+                                    if (draggedVideoId) setDragOverGroupKey(group?.id ?? "ungrouped");
+                                  }}
+                                  onDrop={() =>
+                                    moveDraggedVideo({
+                                      groupId: group?.id ?? null,
+                                    })
+                                  }
+                                  onMove={(direction) => group && moveGroup(group.id, direction)}
+                                  onRename={(title) =>
+                                    groupRequest(
+                                      `/uploads/videos/groups/${group?.id}`,
+                                      "PUT",
+                                      { title },
+                                      "Group renamed",
+                                    )
+                                  }
+                                  onSetReleaseDate={(releaseDate) =>
+                                    groupRequest(
+                                      `/uploads/videos/groups/${group?.id}/release-date`,
+                                      "PUT",
+                                      { releaseDate },
+                                      "Release date applied",
+                                    )
+                                  }
+                                  onUploadInto={() => {
+                                    uploadGroupIdRef.current = group?.id ?? "";
+                                    inputRef.current?.click();
+                                  }}
+                                  totalDurationSeconds={groupVideos.reduce(
+                                    (total, video) => total + (video.durationSeconds ?? 0),
+                                    0,
+                                  )}
+                                  videoCount={groupVideos.length}
+                                />
+                              </td>
+                            </tr>
+                            {groupVideos.length === 0 && (
+                              <tr>
+                                <td className="px-6 py-4 text-center text-xs text-slate-500" colSpan={5}>
+                                  No videos in this group yet. Drag videos onto the heading or use “Upload video”.
+                                </td>
+                              </tr>
                             )}
-                          </span>
-                          <span className="truncate text-slate-950">{video.originalFileName}</span>
-                        </span>
-                      </td>
-                      <td className="max-w-0 px-6 py-5">
-                        <span className="block truncate text-slate-950">{video.title}</span>
-                      </td>
-                      <td className="px-6 py-5">
-                        <span
-                          className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold ${
-                            video.status === "Ready" ? "bg-emerald-50 text-emerald-700" : "bg-blue-50 text-blue-700"
-                          }`}>
-                          <span
-                            className={`size-2 rounded-full ${video.status === "Ready" ? "bg-emerald-500" : "bg-blue-500"}`}
-                          />
-                          {video.status}
-                        </span>
-                      </td>
-                      <td className="w-28 whitespace-nowrap px-6 py-5 text-right">
-                        <button
-                          aria-label={`Edit ${video.title}`}
-                          className="mr-1 inline-flex rounded-md p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-950"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            editVideo(video);
-                          }}
-                          type="button">
-                          <Pencil className="size-4" />
-                        </button>
-                        <button
-                          aria-label={`Delete ${video.originalFileName}`}
-                          className="inline-flex rounded-md p-1.5 text-slate-500 transition hover:bg-red-50 hover:text-red-600"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setVideoToDelete(video);
-                          }}
-                          type="button">
-                          <Trash2 className="size-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                            {groupVideos.map((video) => renderVideoRow(video))}
+                          </Fragment>
+                        ),
+                      )}
                 </tbody>
               </table>
             </div>
@@ -392,6 +614,7 @@ function CourseVideosStep({ courseId, videos, onVideosChange }: CourseVideosStep
         onClose={() => setPendingVideo(null)}
         onConfirm={confirmVideo}
         fetchVideos={fetchVideos}
+        groups={groups}
       />
       <AlertDialog onOpenChange={(open) => !open && setVideoToDelete(null)} open={Boolean(videoToDelete)}>
         <AlertDialogContent

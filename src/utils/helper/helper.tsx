@@ -1,3 +1,4 @@
+import { EnvConfig } from "@/utils/config/envConfig";
 import type { CookieConfigInterface } from "@/utils/interface/helper.interface";
 import { clsx, type ClassValue } from "clsx";
 import Cookies from "js-cookie";
@@ -12,7 +13,8 @@ const getCookieConfig = (): CookieConfigInterface => {
     secure: true,
     sameSite: "Lax",
     path: "/",
-    domain: "admin.kratikayoga.com",
+    // Development (e.g. localhost) uses the current host; production scopes the cookie to the admin domain.
+    ...(EnvConfig.CURRENT_ENVIRONMENT === "PRODUCTION" ? { domain: "admin.kratikayoga.com" } : {}),
     expires: 30,
   };
 };

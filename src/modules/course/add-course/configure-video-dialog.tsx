@@ -16,16 +16,18 @@ import { toast } from "@/components/ui/variants/toast.manager";
 import { multipleApiHandler, type CommonDataFormat } from "@/utils/api/multiple.api";
 import { ERROR_MESSAGES } from "@/utils/constants/error.constants";
 import { SUCCESS_MESSAGES } from "@/utils/constants/success.constants";
+import { addDaysToDate, formatScheduleDate, getIstToday } from "@/utils/helper/ist-date.helper";
 import type { CloudflareImageUploadResponse } from "@/utils/interface/global.interface";
 import {
+  MAX_VIDEO_RELEASE_DAYS_AHEAD,
   validateCourseVideoConfiguration,
   validateCourseVideoThumbnail,
   type CourseVideoConfigurationErrors,
 } from "@/utils/validation/course-video.validation";
-import { FileVideo2, ImageUp, LoaderCircle, X } from "lucide-react";
+import { CalendarClock, FileVideo2, ImageUp, LoaderCircle, TriangleAlert, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import * as tus from "tus-js-client";
-import type { CourseVideoConfiguration, CourseVideoFormData } from "./add-course.types";
+import type { CourseVideoConfiguration, CourseVideoFormData, CourseVideoGroup } from "./add-course.types";
 
 interface ConfigureVideoDialogProps {
   courseId: string;
@@ -33,12 +35,21 @@ interface ConfigureVideoDialogProps {
   onClose: () => void;
   onConfirm: (configuration: CourseVideoConfiguration) => void;
   fetchVideos: () => void;
+  /** The course's weeks/groups; empty when the course doesn't use groups. */
+  groups?: CourseVideoGroup[];
 }
 
 const formatFileSize = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 const formatDuration = (seconds: number) => `${Math.floor(seconds / 60)} min ${Math.round(seconds % 60)} sec`;
 
-function ConfigureVideoDialog({ courseId, configuration, onClose, onConfirm, fetchVideos }: ConfigureVideoDialogProps) {
+function ConfigureVideoDialog({
+  courseId,
+  configuration,
+  onClose,
+  onConfirm,
+  fetchVideos,
+  groups = [],
+}: ConfigureVideoDialogProps) {
   const isEditing = Boolean(configuration?.videoId);
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState<CourseVideoFormData>(() => ({
@@ -48,7 +59,16 @@ function ConfigureVideoDialog({ courseId, configuration, onClose, onConfirm, fet
     thumbnailUrl: configuration?.formData.thumbnailUrl ?? "",
     thumbnailId: configuration?.formData.thumbnailId ?? "",
     title: configuration?.formData.title ?? configuration?.file.name.replace(/\.[^/.]+$/, "") ?? "",
+    releaseDate: configuration?.formData.releaseDate ?? "",
+    groupId: configuration?.formData.groupId ?? "",
   }));
+  const today = getIstToday();
+  // The release date saved on the video being edited ("" for a new upload or no date).
+  const savedReleaseDate = isEditing ? (configuration?.formData.releaseDate ?? "") : "";
+  const isCurrentlyReleased = !savedReleaseDate || savedReleaseDate <= today;
+  // Moving a video that buyers can already watch to a future date takes it away until then.
+  const isRelockingReleasedVideo = isEditing && isCurrentlyReleased && formData.releaseDate > today;
+  const [hasConfirmedRelock, setHasConfirmedRelock] = useState(false);
 
   const [isUploading, setIsUploading] = useState(false);
   const [isDeletingThumbnail, setIsDeletingThumbnail] = useState(false);
@@ -167,6 +187,8 @@ function ConfigureVideoDialog({ courseId, configuration, onClose, onConfirm, fet
           thumbnailType: formData.thumbnailType,
           thumbnailUrl: formData.thumbnailUrl,
           thumbnailId: formData.thumbnailId,
+          ...(formData.releaseDate ? { releaseDate: formData.releaseDate } : {}),
+          ...(formData.groupId ? { groupId: formData.groupId } : {}),
         },
       },
     ]);
@@ -292,6 +314,10 @@ function ConfigureVideoDialog({ courseId, configuration, onClose, onConfirm, fet
             description: formData.description,
             thumbnailUrl: formData.thumbnailUrl,
             thumbnailId: formData.thumbnailId,
+            // "" clears the release date, so the video is visible straight away.
+            releaseDate: formData.releaseDate,
+            // "" removes the video from its group.
+            groupId: formData.groupId,
           },
         },
       ]);
@@ -323,9 +349,13 @@ function ConfigureVideoDialog({ courseId, configuration, onClose, onConfirm, fet
   const handleConfirm = () => {
     if (!configuration) return;
     const nextConfiguration = { ...configuration, formData };
-    const validation = validateCourseVideoConfiguration(nextConfiguration);
+    const validation = validateCourseVideoConfiguration(nextConfiguration, savedReleaseDate);
     setErrors(validation.errors);
     if (!validation.isValid) return;
+    if (isRelockingReleasedVideo && !hasConfirmedRelock) {
+      setHasConfirmedRelock(true);
+      return;
+    }
     if (isEditing) {
       handleUpdateVideo();
     } else {
@@ -508,6 +538,71 @@ function ConfigureVideoDialog({ courseId, configuration, onClose, onConfirm, fet
                   />
                   {errors.title && <p className="text-sm text-red-600">{errors.title}</p>}
                 </div>
+                {groups.length > 0 && (
+                  <div className="space-y-2">
+                    <Label htmlFor="video-group">Week / group</Label>
+                    <select
+                      className="h-9 w-full rounded-lg border border-input bg-white px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                      id="video-group"
+                      onChange={(event) => updateFormData("groupId", event.target.value)}
+                      value={formData.groupId}>
+                      <option value="">No group</option>
+                      {groups.map((group) => (
+                        <option key={group.id} value={group.id}>
+                          {group.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="video-release-date">Release date (optional)</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      aria-invalid={Boolean(errors.releaseDate)}
+                      id="video-release-date"
+                      max={addDaysToDate(today, MAX_VIDEO_RELEASE_DAYS_AHEAD)}
+                      min={savedReleaseDate && savedReleaseDate < today ? savedReleaseDate : today}
+                      onChange={(event) => {
+                        updateFormData("releaseDate", event.target.value);
+                        setErrors((current) => ({ ...current, releaseDate: undefined }));
+                        setHasConfirmedRelock(false);
+                      }}
+                      type="date"
+                      value={formData.releaseDate}
+                    />
+                    {formData.releaseDate && (
+                      <Button
+                        className="h-9 shrink-0"
+                        onClick={() => {
+                          updateFormData("releaseDate", "");
+                          setErrors((current) => ({ ...current, releaseDate: undefined }));
+                          setHasConfirmedRelock(false);
+                        }}
+                        type="button"
+                        variant="outline">
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                  {errors.releaseDate ? (
+                    <p className="text-sm text-red-600">{errors.releaseDate}</p>
+                  ) : (
+                    <p className="flex items-start gap-1.5 text-xs text-slate-500">
+                      <CalendarClock className="mt-px size-3.5 shrink-0" />
+                      {formData.releaseDate && formData.releaseDate > today
+                        ? `Buyers can watch it from ${formatScheduleDate(formData.releaseDate)}, 12:00 AM IST.`
+                        : `Leave empty (or pick today) to show it as soon as processing finishes. Up to ${MAX_VIDEO_RELEASE_DAYS_AHEAD} days ahead.`}
+                    </p>
+                  )}
+                  {isRelockingReleasedVideo && hasConfirmedRelock && (
+                    <p className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                      <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+                      Buyers who can watch this video now will lose access to it until{" "}
+                      {formatScheduleDate(formData.releaseDate)}. Click &quot;Confirm update&quot; to continue.
+                    </p>
+                  )}
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="video-description">Description (optional)</Label>
                   <RichTextEditor
@@ -519,118 +614,118 @@ function ConfigureVideoDialog({ courseId, configuration, onClose, onConfirm, fet
                   />
                 </div>
                 {!isEditing && (
-                <Card className="gap-0 overflow-hidden rounded-2xl bg-gray-100/10 p-0 shadow-sm ring-0 border border-slate-400">
-                  <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-200/80 px-4 py-3 text-sm font-semibold text-slate-950">
-                    <span className="flex size-7 items-center justify-center rounded-md bg-white text-slate-700 shadow-sm ring-1 ring-slate-200">
-                      <FileVideo2 className="size-4" />
-                    </span>
-                    <span>Video file details</span>
-                  </div>
-                  <dl className="space-y-2 px-4 py-3 text-sm leading-5">
-                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
-                      <dt className="text-[#526b91]">File name</dt>
-                      <dd className="max-w-58.75 truncate text-right text-slate-950">{configuration.file.name}</dd>
+                  <Card className="gap-0 overflow-hidden rounded-2xl bg-gray-100/10 p-0 shadow-sm ring-0 border border-slate-400">
+                    <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-200/80 px-4 py-3 text-sm font-semibold text-slate-950">
+                      <span className="flex size-7 items-center justify-center rounded-md bg-white text-slate-700 shadow-sm ring-1 ring-slate-200">
+                        <FileVideo2 className="size-4" />
+                      </span>
+                      <span>Video file details</span>
                     </div>
-                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
-                      <dt className="text-[#526b91]">File type</dt>
-                      <dd className="text-right text-slate-950">
-                        {configuration.file.type.split("/")[1]?.toUpperCase()}
-                      </dd>
-                    </div>
-                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
-                      <dt className="text-[#526b91]">File size</dt>
-                      <dd className="text-right text-slate-950">{formatFileSize(configuration.file.size)}</dd>
-                    </div>
-                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
-                      <dt className="text-[#526b91]">Duration</dt>
-                      <dd className="text-right text-slate-950">{formatDuration(configuration.durationSeconds)}</dd>
-                    </div>
-                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
-                      <dt className="text-[#526b91]">Total duration (seconds)</dt>
-                      <dd className="text-right text-slate-950">{Math.round(configuration.durationSeconds)}</dd>
-                    </div>
-                  </dl>
-                </Card>
+                    <dl className="space-y-2 px-4 py-3 text-sm leading-5">
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
+                        <dt className="text-[#526b91]">File name</dt>
+                        <dd className="max-w-58.75 truncate text-right text-slate-950">{configuration.file.name}</dd>
+                      </div>
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
+                        <dt className="text-[#526b91]">File type</dt>
+                        <dd className="text-right text-slate-950">
+                          {configuration.file.type.split("/")[1]?.toUpperCase()}
+                        </dd>
+                      </div>
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
+                        <dt className="text-[#526b91]">File size</dt>
+                        <dd className="text-right text-slate-950">{formatFileSize(configuration.file.size)}</dd>
+                      </div>
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
+                        <dt className="text-[#526b91]">Duration</dt>
+                        <dd className="text-right text-slate-950">{formatDuration(configuration.durationSeconds)}</dd>
+                      </div>
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
+                        <dt className="text-[#526b91]">Total duration (seconds)</dt>
+                        <dd className="text-right text-slate-950">{Math.round(configuration.durationSeconds)}</dd>
+                      </div>
+                    </dl>
+                  </Card>
                 )}
               </div>
               <div className="space-y-3">
                 <Label>Thumbnail</Label>
                 <div className="rounded-xl border border-slate-800 p-4">
-                <span className="text-sm font-medium">Custom thumbnail</span>
-                <div
-                  className={`relative mt-3 flex min-h-40 w-full cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border border-dashed p-4 text-center transition ${isThumbnailDragging ? "border-blue-500 bg-blue-50" : "border-slate-400 bg-slate-50/40"}`}
-                  onClick={() => thumbnailInputRef.current?.click()}
-                  onDragEnter={(event) => {
-                    event.preventDefault();
-                    setIsThumbnailDragging(true);
-                  }}
-                  onDragLeave={() => setIsThumbnailDragging(false)}
-                  onDragOver={(event) => event.preventDefault()}
-                  onDrop={handleThumbnailDrop}
-                  role="button"
-                  tabIndex={0}>
-                  {thumbnailPreview ? (
-                    <img
-                      alt="Video thumbnail preview"
-                      className="size-full max-h-40 object-cover rounded"
-                      src={thumbnailPreview}
-                    />
-                  ) : (
-                    <>
-                      <ImageUp className="size-7 text-slate-600" />
-                      <span className="mt-3 text-sm font-semibold">Upload thumbnail</span>
-                      <span className="mt-1 text-xs text-slate-500">PNG, JPG, or WebP · recommended 16:9</span>
-                    </>
-                  )}
-                  {thumbnailPreview && (
-                    <button
-                      aria-label="Remove video thumbnail"
-                      className="absolute top-2 right-2 z-10 flex size-8 items-center justify-center rounded-full bg-slate-950/90 text-white hover:bg-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
-                      disabled={isDeletingThumbnail || isUploading}
-                      onClick={removeThumbnail}
-                      type="button">
-                      <X className="size-4" />
-                    </button>
-                  )}
-                  {!thumbnailPreview && (
-                    <input
-                      accept="image/png,image/jpeg,image/webp"
-                      className="sr-only"
-                      onChange={handleThumbnailChange}
-                      ref={thumbnailInputRef}
-                      type="file"
-                    />
-                  )}
-                </div>
-                {(thumbnailPreview || formData?.thumbnailUrl) && (
-                  <>
-                    {formData?.thumbnailId?.length !== 0 ? (
-                      <Button
-                        className="mt-4 h-11 w-full"
+                  <span className="text-sm font-medium">Custom thumbnail</span>
+                  <div
+                    className={`relative mt-3 flex min-h-40 w-full cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border border-dashed p-4 text-center transition ${isThumbnailDragging ? "border-blue-500 bg-blue-50" : "border-slate-400 bg-slate-50/40"}`}
+                    onClick={() => thumbnailInputRef.current?.click()}
+                    onDragEnter={(event) => {
+                      event.preventDefault();
+                      setIsThumbnailDragging(true);
+                    }}
+                    onDragLeave={() => setIsThumbnailDragging(false)}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={handleThumbnailDrop}
+                    role="button"
+                    tabIndex={0}>
+                    {thumbnailPreview ? (
+                      <img
+                        alt="Video thumbnail preview"
+                        className="size-full max-h-40 object-cover rounded"
+                        src={thumbnailPreview}
+                      />
+                    ) : (
+                      <>
+                        <ImageUp className="size-7 text-slate-600" />
+                        <span className="mt-3 text-sm font-semibold">Upload thumbnail</span>
+                        <span className="mt-1 text-xs text-slate-500">PNG, JPG, or WebP · recommended 16:9</span>
+                      </>
+                    )}
+                    {thumbnailPreview && (
+                      <button
+                        aria-label="Remove video thumbnail"
+                        className="absolute top-2 right-2 z-10 flex size-8 items-center justify-center rounded-full bg-slate-950/90 text-white hover:bg-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
                         disabled={isDeletingThumbnail || isUploading}
                         onClick={removeThumbnail}
-                        type="button"
-                        variant="default">
-                        {isDeletingThumbnail ? "Deleting image..." : "Discard Image"}
-                      </Button>
-                    ) : (
-                      <Button
-                        className="mt-4 h-11 w-full"
-                        disabled={isUploading || Boolean(formData.thumbnailUrl)}
-                        onClick={handelUploadVideoThumbnail}
-                        type="button"
-                        variant="default">
-                        {isUploading && <LoaderCircle className="animate-spin" />}
-                        {isUploading
-                          ? `Uploading ${uploadProgress}%`
-                          : formData.thumbnailUrl
-                            ? "Uploaded"
-                            : "Confirm and upload"}
-                      </Button>
+                        type="button">
+                        <X className="size-4" />
+                      </button>
                     )}
-                  </>
-                )}
-                {errors.thumbnailFile && <p className="mt-2 text-sm text-red-600">{errors.thumbnailFile}</p>}
+                    {!thumbnailPreview && (
+                      <input
+                        accept="image/png,image/jpeg,image/webp"
+                        className="sr-only"
+                        onChange={handleThumbnailChange}
+                        ref={thumbnailInputRef}
+                        type="file"
+                      />
+                    )}
+                  </div>
+                  {(thumbnailPreview || formData?.thumbnailUrl) && (
+                    <>
+                      {formData?.thumbnailId?.length !== 0 ? (
+                        <Button
+                          className="mt-4 h-11 w-full"
+                          disabled={isDeletingThumbnail || isUploading}
+                          onClick={removeThumbnail}
+                          type="button"
+                          variant="default">
+                          {isDeletingThumbnail ? "Deleting image..." : "Discard Image"}
+                        </Button>
+                      ) : (
+                        <Button
+                          className="mt-4 h-11 w-full"
+                          disabled={isUploading || Boolean(formData.thumbnailUrl)}
+                          onClick={handelUploadVideoThumbnail}
+                          type="button"
+                          variant="default">
+                          {isUploading && <LoaderCircle className="animate-spin" />}
+                          {isUploading
+                            ? `Uploading ${uploadProgress}%`
+                            : formData.thumbnailUrl
+                              ? "Uploaded"
+                              : "Confirm and upload"}
+                        </Button>
+                      )}
+                    </>
+                  )}
+                  {errors.thumbnailFile && <p className="mt-2 text-sm text-red-600">{errors.thumbnailFile}</p>}
                 </div>
               </div>
             </div>
@@ -647,7 +742,11 @@ function ConfigureVideoDialog({ courseId, configuration, onClose, onConfirm, fet
               Cancel
             </Button>
             <AlertDialogAction className="h-11 px-6" disabled={isUploading} onClick={handleConfirm}>
-              {isEditing ? "Update" : "Proceed to upload"}
+              {isEditing
+                ? isRelockingReleasedVideo && hasConfirmedRelock
+                  ? "Confirm update"
+                  : "Update"
+                : "Proceed to upload"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </div>

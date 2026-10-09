@@ -19,10 +19,18 @@ export function formatCourseVideos(videos: unknown[], courseId: string): CourseV
       id: String(video.id ?? `${courseId}-video-${index}`),
       isCustomThumbnail: Boolean(video.isCustomThumbnail),
       originalFileName: String(
-        video.originalFileName ?? video.originalName ?? video.fileName ?? video.filename ?? video.name ?? "Untitled video",
+        video.originalFileName ??
+          video.originalName ??
+          video.fileName ??
+          video.filename ??
+          video.name ??
+          "Untitled video",
       ),
       processingPercentage: Number(video.processingPercentage ?? 0),
       readyToStream: Boolean(video.readyToStream),
+      releaseDate: typeof video.releaseDate === "string" && video.releaseDate ? video.releaseDate : null,
+      isScheduled: Boolean(video.isScheduled),
+      groupId: typeof video.groupId === "string" && video.groupId ? video.groupId : null,
       sortOrder: Number(video.sortOrder ?? index),
       status: String(video.status ?? "Processing").toLowerCase() === "ready" ? "Ready" : "Processing",
       thumbnailId: String(video.thumbnailId ?? "") || undefined,

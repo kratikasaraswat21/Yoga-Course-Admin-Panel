@@ -23,7 +23,7 @@ import { toast } from "@/components/ui/variants/toast.manager";
 import { useDebounce } from "@/hooks/useDebounce";
 import { multipleApiHandler } from "@/utils/api/multiple.api";
 import { COURSES_PER_PAGE, COURSE_STATUSES } from "@/utils/constants/course.constants";
-import type { Course, CourseStatus } from "@/utils/interface/course.interface";
+import type { Course, CourseStatus, PrelaunchState } from "@/utils/interface/course.interface";
 
 type CourseStatusFilter = CourseStatus | "All";
 
@@ -159,6 +159,14 @@ function CourseManagementPage() {
           averageRating: Number(course.averageRating ?? 0),
           totalEnrolledStudents: Number(course.totalEnrolledStudents ?? course.students ?? 0),
           videoCount: Number(course.videoCount ?? 0),
+          slug: String(course.slug ?? ""),
+          landingPageEnabled: course.landingPageEnabled === true,
+          prelaunchState: (["UPCOMING", "LIVE", "ENDED"].includes(String(course.prelaunchState))
+            ? course.prelaunchState
+            : "NONE") as PrelaunchState,
+          prelaunchDiscount: Number(course.prelaunchDiscount ?? 0),
+          prelaunchStartDate: typeof course.prelaunchStartDate === "string" ? course.prelaunchStartDate : null,
+          prelaunchEndDate: typeof course.prelaunchEndDate === "string" ? course.prelaunchEndDate : null,
           coverImageName: String(course.thumbnailId ?? ""),
           thumbnailUrl: String(course.thumbnailURL ?? course.thumbnailUrl ?? course.thumbnail_url ?? ""),
           videoFileName: "",
