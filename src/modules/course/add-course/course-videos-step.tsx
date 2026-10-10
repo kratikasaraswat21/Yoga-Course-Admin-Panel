@@ -5,6 +5,7 @@ import {
   Lock,
   Pencil,
   RefreshCw,
+  Rocket,
   Trash2,
   UploadCloud,
   Video,
@@ -73,6 +74,8 @@ function CourseVideosStep({ courseId, videos, onVideosChange }: CourseVideosStep
   const [groups, setGroups] = useState<CourseVideoGroup[]>([]);
   const [dragOverGroupKey, setDragOverGroupKey] = useState<string | null>(null);
   const [isAddingGroup, setIsAddingGroup] = useState(false);
+  const [showMakeLiveDialog, setShowMakeLiveDialog] = useState(false);
+  const [isMakingLive, setIsMakingLive] = useState(false);
   // Group to preselect in the upload dialog ("Upload video" inside a group).
   const uploadGroupIdRef = useRef("");
 
@@ -127,6 +130,35 @@ function CourseVideosStep({ courseId, videos, onVideosChange }: CourseVideosStep
     setIsRefreshing(true);
     fetchVideos(false);
     window.setTimeout(() => setIsRefreshing(false), 1000);
+  };
+
+  // "Make live now" is offered while the course has ready videos but every one of them is still scheduled.
+  const readyVideos = videos.filter((video) => video.status === "Ready");
+  const canMakeLiveNow = readyVideos.length > 0 && readyVideos.every((video) => video.isScheduled);
+
+  const makeCourseLiveNow = async () => {
+    setIsMakingLive(true);
+    try {
+      const response = await multipleApiHandler([
+        {
+          endPoint: `/uploads/videos/courses/${encodeURIComponent(courseId)}/make-live`,
+          method: "POST",
+          protected: true,
+        },
+      ]);
+      const result = response[0];
+      toast.add({
+        description: result?.data?.message ?? (result?.data?.success ? undefined : "The course could not be made live."),
+        title: result?.data?.success ? "Course is live" : "Could not make the course live",
+        type: result?.data?.success ? "success" : "error",
+      });
+      if (result?.data?.success) {
+        setShowMakeLiveDialog(false);
+        fetchVideos(false);
+      }
+    } finally {
+      setIsMakingLive(false);
+    }
   };
 
   const reorderVideos = useDebounce(async (payload: Record<string, unknown>) => {
@@ -495,6 +527,12 @@ function CourseVideosStep({ courseId, videos, onVideosChange }: CourseVideosStep
             </p>
           </div>
           <div className="flex flex-wrap justify-end gap-2">
+            {canMakeLiveNow && (
+              <Button className="h-9 gap-2 px-3" onClick={() => setShowMakeLiveDialog(true)} type="button">
+                <Rocket className="size-4" />
+                Make live now
+              </Button>
+            )}
             <Button
               className="h-9 gap-2 px-3"
               disabled={isAddingGroup || !courseId}
@@ -616,6 +654,51 @@ function CourseVideosStep({ courseId, videos, onVideosChange }: CourseVideosStep
         fetchVideos={fetchVideos}
         groups={groups}
       />
+      <AlertDialog onOpenChange={(open) => !open && !isMakingLive && setShowMakeLiveDialog(false)} open={showMakeLiveDialog}>
+        <AlertDialogContent
+          className="relative gap-6 p-7"
+          style={{
+            left: "50%",
+            maxHeight: "100%",
+            maxWidth: "560px",
+            overflowY: "auto",
+            position: "fixed",
+            top: "50%",
+            width: "100%",
+          }}>
+          <AlertDialogHeader>
+            <div className="flex w-full items-center justify-between">
+              <span className="pr-10 text-xl font-semibold">Make the course live now?</span>
+              <button
+                aria-label="Close make live confirmation"
+                className="flex size-9 items-center justify-center rounded-lg bg-slate-950 text-white transition hover:bg-slate-800"
+                disabled={isMakingLive}
+                onClick={() => setShowMakeLiveDialog(false)}
+                type="button">
+                <X className="size-5" />
+              </button>
+            </div>
+            <AlertDialogDescription className="pt-7 text-base leading-6">
+              The first scheduled videos are released right away instead of on their release date, and every
+              prelaunch buyer gets the “your course is live” email. Videos scheduled for later dates stay locked. This
+              can't be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="m-0! flex w-full flex-row justify-end gap-3 px-0! pt-6! pb-0!">
+            <AlertDialogCancel className="h-12 w-1/2 min-w-0! max-w-1/2! flex-1 px-5" disabled={isMakingLive}>
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              className="h-12 w-1/2 min-w-0! max-w-1/2! flex-1 gap-2 px-5"
+              disabled={isMakingLive}
+              onClick={() => void makeCourseLiveNow()}
+              type="button">
+              {isMakingLive && <LoaderCircle className="size-4 animate-spin" />}
+              Make live now
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog onOpenChange={(open) => !open && setVideoToDelete(null)} open={Boolean(videoToDelete)}>
         <AlertDialogContent
           className="relative gap-6 p-7"

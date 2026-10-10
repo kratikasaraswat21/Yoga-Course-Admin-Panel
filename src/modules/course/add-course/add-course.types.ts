@@ -27,8 +27,11 @@ export interface PhaseText {
   live: string;
 }
 
+/** A stat tile or pain point card. An uploaded icon (iconUrl, e.g. an SVG) is shown instead of the emoji. */
 export interface LandingIconItem {
   icon: string;
+  iconUrl: string;
+  iconId: string;
   title: string;
   text: string;
 }
@@ -48,38 +51,50 @@ export interface CourseLandingContent {
     coverImageId: string;
   };
   /** Section under the hero with the course trailer. */
-  trailerSection: { eyebrow: string; title: string; text: string };
+  trailerSection: { title: string; text: string };
+  /** Small heading above the stat tiles, e.g. "Course at a glance". Empty hides it. */
+  statsTitle: string;
   stats: LandingIconItem[];
-  painPoints: { eyebrow: string; title: string; items: LandingIconItem[] };
-  howItWorks: { eyebrow: string; title: string; steps: { title: string; text: string }[] };
-  benefits: { eyebrow: string; title: string; text: string; items: string[] };
-  curriculum: { eyebrow: string; title: string; text: string };
+  painPoints: { title: string; text: string; items: LandingIconItem[] };
+  howItWorks: { title: string; text: string; steps: { title: string; text: string }[] };
+  benefits: { title: string; text: string; items: string[] };
+  curriculum: { title: string; text: string };
   pricing: {
-    eyebrow: string;
     title: string;
     /** Line under the title; differs before and after launch. */
     text: PhaseText;
     badge: PhaseText;
     stepsTitle: string;
     steps: { prelaunch: string[]; live: string[] };
-    includes: string[];
     button: string;
     /** Line under the price. */
     note: string;
   };
   instructor: {
-    eyebrow: string;
     title: string;
     bio: string;
     imageUrl: string;
     imageId: string;
     /** Small figures under the bio, e.g. { value: "8 yrs", label: "of practice" }. */
     stats: { value: string; label: string }[];
+    /** Small label on the photo, e.g. "Taking new students this month". */
+    availability: string;
+    /** Heading above the tags, e.g. "She teaches". */
+    teachesLabel: string;
+    teaches: string[];
+    quote: { text: string; author: string };
+    /** Each button shows only with both a label and a link (https://, /path, #section, mailto: or tel:). */
+    primaryButton: { label: string; url: string };
+    secondaryButton: { label: string; url: string };
+    /** Short line beside the buttons, e.g. "Free 15-min intro call". */
+    buttonNote: string;
   };
-  testimonials: { eyebrow: string; title: string; showScreenshots: boolean; quotes: { text: string; name: string }[] };
-  faq: { eyebrow: string; title: string; items: { question: string; answer: string }[] };
+  testimonials: { title: string; showScreenshots: boolean; quotes: { text: string; name: string }[] };
+  faq: { title: string; text: string; items: { question: string; answer: string }[] };
   finalCta: { title: string; text: string; button: string };
   mobileBar: { subtitle: string };
+  /** Search results and link previews; empty fields fall back to the course title, intro and cover image. */
+  seo: { title: string; description: string; imageUrl: string; imageId: string };
 }
 
 export interface CourseTrailer {

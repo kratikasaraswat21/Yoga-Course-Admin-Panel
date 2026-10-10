@@ -25,28 +25,41 @@ export const EMPTY_LANDING_CONTENT: CourseLandingContent = {
     coverImageUrl: "",
     coverImageId: "",
   },
-  trailerSection: { eyebrow: "", title: "", text: "" },
+  trailerSection: { title: "", text: "" },
+  statsTitle: "",
   stats: [],
-  painPoints: { eyebrow: "", title: "", items: [] },
-  howItWorks: { eyebrow: "", title: "", steps: [] },
-  benefits: { eyebrow: "", title: "", text: "", items: [] },
-  curriculum: { eyebrow: "", title: "", text: "" },
+  painPoints: { title: "", text: "", items: [] },
+  howItWorks: { title: "", text: "", steps: [] },
+  benefits: { title: "", text: "", items: [] },
+  curriculum: { title: "", text: "" },
   pricing: {
-    eyebrow: "",
     title: "",
     text: { prelaunch: "", live: "" },
     badge: { prelaunch: "", live: "" },
     stepsTitle: "",
     steps: { prelaunch: [], live: [] },
-    includes: [],
     button: "",
     note: "",
   },
-  instructor: { eyebrow: "", title: "", bio: "", imageUrl: "", imageId: "", stats: [] },
-  testimonials: { eyebrow: "", title: "", showScreenshots: false, quotes: [] },
-  faq: { eyebrow: "", title: "", items: [] },
+  instructor: {
+    title: "",
+    bio: "",
+    imageUrl: "",
+    imageId: "",
+    stats: [],
+    availability: "",
+    teachesLabel: "",
+    teaches: [],
+    quote: { text: "", author: "" },
+    primaryButton: { label: "", url: "" },
+    secondaryButton: { label: "", url: "" },
+    buttonNote: "",
+  },
+  testimonials: { title: "", showScreenshots: false, quotes: [] },
+  faq: { title: "", text: "", items: [] },
   finalCta: { title: "", text: "", button: "" },
   mobileBar: { subtitle: "" },
+  seo: { title: "", description: "", imageUrl: "", imageId: "" },
 };
 
 /**
@@ -71,42 +84,48 @@ export const LANDING_CONTENT_TEMPLATE: CourseLandingContent = {
     coverImageId: "",
   },
   trailerSection: {
-    eyebrow: "Watch the trailer",
     title: "See what *30 days* feels like",
     text: "A short look at the sessions, the pace and the guidance you'll follow every day.",
   },
+  statsTitle: "Course at a glance",
   stats: [
-    { icon: "📅", title: "30 Days", text: "Daily guided practice" },
-    { icon: "⏱", title: "10–12 Mins", text: "One short video a day" },
-    { icon: "🎥", title: "30 Videos", text: "A new focus every day" },
-    { icon: "♾", title: "Lifetime", text: "Access, no expiry" },
-    { icon: "📱", title: "Any Device", text: "Phone, tablet or TV" },
-    { icon: "🌱", title: "All Levels", text: "Beginner friendly" },
+    { icon: "📅", iconUrl: "", iconId: "", title: "30 Days", text: "Daily guided practice" },
+    { icon: "⏱", iconUrl: "", iconId: "", title: "10–12 Mins", text: "One short video a day" },
+    { icon: "🎥", iconUrl: "", iconId: "", title: "30 Videos", text: "A new focus every day" },
+    { icon: "♾", iconUrl: "", iconId: "", title: "Lifetime", text: "Access, no expiry" },
+    { icon: "📱", iconUrl: "", iconId: "", title: "Any Device", text: "Phone, tablet or TV" },
+    { icon: "🌱", iconUrl: "", iconId: "", title: "All Levels", text: "Beginner friendly" },
   ],
   painPoints: {
-    eyebrow: "Sound familiar?",
     title: "Stiffness shouldn't be your *normal*.",
+    text: "Long hours at a desk, on your phone or in the car add up. If any of these sound like you, this course was made for you.",
     items: [
       {
         icon: "🪑",
+        iconUrl: "",
+        iconId: "",
         title: "Stuck from sitting",
         text: "Hours at a desk leave your hips tight and your lower back aching by evening.",
       },
       {
         icon: "🦵",
+        iconUrl: "",
+        iconId: "",
         title: "Can't get into the poses",
         text: "Squatting, sitting cross-legged or reaching your toes feels like a struggle.",
       },
       {
         icon: "🔁",
+        iconUrl: "",
+        iconId: "",
         title: "No consistency",
         text: "Random YouTube videos don't build progress. You need a clear plan, day by day.",
       },
     ],
   },
   howItWorks: {
-    eyebrow: "How it works",
     title: "Simple enough to do *every day*",
+    text: "No complicated routines. Just press play and follow along, one short session at a time.",
     steps: [
       { title: "Press play", text: "Open today's session on your phone, tablet or TV. No planning needed." },
       { title: "Follow along", text: "10–12 gentle minutes with clear voice guidance, at your own pace." },
@@ -114,7 +133,6 @@ export const LANDING_CONTENT_TEMPLATE: CourseLandingContent = {
     ],
   },
   benefits: {
-    eyebrow: "What you'll gain",
     title: "Move better in *30 days*.",
     text: "Small, steady sessions that add up to real, lasting change.",
     items: [
@@ -126,12 +144,10 @@ export const LANDING_CONTENT_TEMPLATE: CourseLandingContent = {
     ],
   },
   curriculum: {
-    eyebrow: "What's inside",
     title: "{lessonCount} lessons. *{totalDuration} total.*",
     text: "Watch on your phone, tablet or TV — and come back to any lesson as many times as you like.",
   },
   pricing: {
-    eyebrow: "Enroll",
     title: "Everything you need, *one price*.",
     text: {
       prelaunch:
@@ -144,18 +160,10 @@ export const LANDING_CONTENT_TEMPLATE: CourseLandingContent = {
       prelaunch: ["Enroll now at *{discount}% off*", "Confirmation email, instantly", "Course unlocks *{launchDate}*"],
       live: ["Enroll now", "Get instant access after payment", "Start Day 1 today"],
     },
-    includes: [
-      "30 daily videos, 10–12 min each",
-      "Lifetime access, on phone, tablet or TV",
-      "No equipment needed, just a mat",
-      "Follow at your own pace",
-      "Support from Kratika by email",
-    ],
     button: "Enroll in the course",
     note: "One-time payment · lifetime access · no subscription",
   },
   instructor: {
-    eyebrow: "Your teacher",
     title: "Kratika *Saraswat*",
     bio: "A certified 500-Hour Yoga Teacher Training (YTT) graduate and Half Primary Ashtanga yoga coach. Practising yoga for 8 years and teaching for the last 5 — every course comes from lessons learned on her own mat first.",
     imageUrl: "",
@@ -164,10 +172,21 @@ export const LANDING_CONTENT_TEMPLATE: CourseLandingContent = {
       { value: "8 yrs", label: "of practice" },
       { value: "500 hr", label: "YTT certified" },
       { value: "5 yrs", label: "of teaching" },
+      { value: "200+", label: "students taught" },
     ],
+    availability: "Taking new students this month",
+    teachesLabel: "She teaches",
+    teaches: ["Ashtanga (Half Primary)", "Hatha", "Pranayama", "Beginner foundations", "Mobility & flexibility"],
+    quote: {
+      text: "Yoga meets you where you are. My job is to help you take the next honest step on your mat.",
+      author: "Kratika",
+    },
+    // No booking link yet: the admin adds one (e.g. a Calendly or WhatsApp link) to show this button.
+    primaryButton: { label: "Book a call with Kratika", url: "" },
+    secondaryButton: { label: "View her courses", url: "/courses" },
+    buttonNote: "Free 15-min intro call",
   },
   testimonials: {
-    eyebrow: "Student love",
     title: "Real practice. Real progress.",
     showScreenshots: true,
     quotes: [
@@ -186,8 +205,8 @@ export const LANDING_CONTENT_TEMPLATE: CourseLandingContent = {
     ],
   },
   faq: {
-    eyebrow: "FAQ",
     title: "Questions before you begin?",
+    text: "A few helpful answers to make your first step feel simple.",
     items: [
       {
         question: "Is this suitable for beginners?",
@@ -207,6 +226,8 @@ export const LANDING_CONTENT_TEMPLATE: CourseLandingContent = {
     button: "Enroll now",
   },
   mobileBar: { subtitle: "30 Days Full Mobility" },
+  // Empty: the page uses the course title, intro text and cover image until the admin fills these in.
+  seo: { title: "", description: "", imageUrl: "", imageId: "" },
 };
 
 const isBlank = (value: unknown): boolean =>

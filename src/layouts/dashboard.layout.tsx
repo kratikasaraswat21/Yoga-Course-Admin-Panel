@@ -79,7 +79,7 @@ function DashboardLayout() {
   }
 
   return (
-    <div className="flex h-dvh items-stretch w-full max-w-full overflow-hidden bg-slate-100 text-slate-950">
+    <div className="relative flex h-dvh items-stretch w-full max-w-full overflow-hidden bg-slate-100 text-slate-950">
       <DashboardSidebar
         isCollapsed={isSidebarCollapsed}
         isOpen={isSidebarOpen}
@@ -87,10 +87,12 @@ function DashboardLayout() {
         onToggleCollapse={() => setIsSidebarCollapsed((current) => !current)}
       />
 
-      <div className="flex  min-h-0 min-w-0 flex-col overflow-hidden w-full">
+      <div className="relative flex min-h-0 min-w-0 flex-col overflow-hidden w-full">
         <DashboardNavbar onOpenSidebar={openSidebar} />
 
-        <main className="dashboard-scroll-area min-h-0 min-w-0 h-full overflow-y-auto">
+        {/* relative: absolutely positioned content (e.g. sr-only file inputs) stays inside this scroll area
+            instead of stretching the browser page below the layout. */}
+        <main className="dashboard-scroll-area relative min-h-0 min-w-0 h-full overflow-y-auto">
           <Outlet />
         </main>
       </div>

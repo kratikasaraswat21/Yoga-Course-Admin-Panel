@@ -30,8 +30,12 @@ const SHORT = 160;
 const TITLE = 200;
 const TEXT = 600;
 const LONG = 1500;
+// Same rule as the backend: web pages, a path or #section on this site, email and phone links.
+const SAFE_LINK = /^(https?:\/\/|\/(?!\/)|#|mailto:|tel:)/i;
+const BUTTON_LINK_HINT = "Leave the link empty to hide the button. e.g. https://calendly.com/…, /courses or #buy";
 
 const HIGHLIGHT_HINT = "Wrap words in *asterisks* to highlight them.";
+const ICON_HINT = "Use an emoji or upload an icon (SVG, PNG or WebP). An uploaded icon is shown instead of the emoji.";
 
 export interface CourseLandingStepHandle {
   /** Saves the landing page when something changed. Resolves to false when saving failed or is invalid. */
@@ -72,6 +76,19 @@ const validateContent = (content: CourseLandingContent) => {
   if (content.instructor.stats.some((stat) => stat.label.trim() && !stat.value.trim())) {
     return 'Every instructor figure needs a value, e.g. "8 yrs".';
   }
+  if (content.instructor.quote.author.trim() && !content.instructor.quote.text.trim()) {
+    return "The instructor quote needs the quote text.";
+  }
+  for (const [name, button] of [
+    ["Instructor main button", content.instructor.primaryButton],
+    ["Instructor second button", content.instructor.secondaryButton],
+  ] as const) {
+    const label = button.label.trim();
+    const url = button.url.trim();
+    if (label && !url) return `${name} needs a link.`;
+    if (url && !label) return `${name} needs a label.`;
+    if (url && !SAFE_LINK.test(url)) return `${name} link must start with https://, /, #, mailto: or tel:.`;
+  }
   if (content.testimonials.quotes.some((quote) => quote.name.trim() && !quote.text.trim())) {
     return "Every student quote needs the quote text.";
   }
@@ -87,6 +104,11 @@ const validateContent = (content: CourseLandingContent) => {
   }
   return null;
 };
+
+/** Keys whose value is a section object (not a list or a plain text like `statsTitle`). */
+type SectionKey = {
+  [Key in keyof CourseLandingContent]: CourseLandingContent[Key] extends string | unknown[] ? never : Key;
+}[keyof CourseLandingContent];
 
 function CourseLandingStep({ ref, courseId }: { ref?: Ref<CourseLandingStepHandle>; courseId: string }) {
   const hasFetchedRef = useRef(false);
@@ -109,7 +131,7 @@ function CourseLandingStep({ ref, courseId }: { ref?: Ref<CourseLandingStepHandl
     setContent((current) => ({ ...current, [key]: value }));
     setError(null);
   };
-  const updateIn = <Key extends keyof CourseLandingContent>(key: Key, patch: Partial<CourseLandingContent[Key]>) => {
+  const updateIn = <Key extends SectionKey>(key: Key, patch: Partial<CourseLandingContent[Key]>) => {
     setContent((current) => ({ ...current, [key]: { ...current[key], ...patch } }));
     setError(null);
   };
@@ -336,7 +358,7 @@ function CourseLandingStep({ ref, courseId }: { ref?: Ref<CourseLandingStepHandl
 
           <EditorSection defaultOpen description="Thin bar at the very top of the page." title="1. Announcement bar">
             <PhaseTextField
-              hint={`${HIGHLIGHT_HINT} Leave a version empty to hide the bar in that phase.`}
+              hint={`${HIGHLIGHT_HINT} Leave a version empty to hide the bar in that phase. After launch, a running discount is added to the end (“· Now 20% off”) unless the text already uses {discount}.`}
               id="announcement"
               label="Announcement"
               maxLength={TITLE}
@@ -416,25 +438,44 @@ function CourseLandingStep({ ref, courseId }: { ref?: Ref<CourseLandingStepHandl
           </EditorSection>
 
           <EditorSection
+            description="Tiles in a “Course at a glance” strip under the hero, e.g. “30 Days · Daily guided practice”."
+            title="3. Stats tiles">
+            <TextField
+              hint="Small heading above the tiles. Leave empty to hide it."
+              id="stats-title"
+              label="Title"
+              maxLength={SHORT}
+              onChange={(statsTitle) => update("statsTitle", statsTitle)}
+              placeholder="Course at a glance"
+              value={content.statsTitle}
+            />
+            <ObjectListField
+              emptyItem={{ icon: "", iconUrl: "", iconId: "", title: "", text: "" }}
+              fields={[
+                { key: "icon", label: "Icon", maxLength: 16, narrow: true, placeholder: "Emoji" },
+                { key: "title", label: "Title", maxLength: 60 },
+                { key: "text", label: "Text", maxLength: 120 },
+              ]}
+              hint={ICON_HINT}
+              iconUpload={{ urlKey: "iconUrl", idKey: "iconId" }}
+              itemLabel="Tile"
+              items={content.stats}
+              label="Tiles"
+              onChange={(stats) => update("stats", stats)}
+            />
+          </EditorSection>
+
+          <EditorSection
             description="Its own section under the hero: a 16:9 video with your thumbnail and a play button. Hidden until a trailer is uploaded and ready."
-            title="3. Trailer">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <TextField
-                id="trailer-eyebrow"
-                label="Small heading"
-                maxLength={SHORT}
-                onChange={(eyebrow) => updateIn("trailerSection", { eyebrow })}
-                value={content.trailerSection.eyebrow}
-              />
-              <TextField
-                hint={HIGHLIGHT_HINT}
-                id="trailer-title"
-                label="Title"
-                maxLength={TITLE}
-                onChange={(title) => updateIn("trailerSection", { title })}
-                value={content.trailerSection.title}
-              />
-            </div>
+            title="4. Trailer">
+            <TextField
+              hint={HIGHLIGHT_HINT}
+              id="trailer-title"
+              label="Title"
+              maxLength={TITLE}
+              onChange={(title) => updateIn("trailerSection", { title })}
+              value={content.trailerSection.title}
+            />
             <TextField
               id="trailer-text"
               label="Description"
@@ -452,75 +493,58 @@ function CourseLandingStep({ ref, courseId }: { ref?: Ref<CourseLandingStepHandl
             />
           </EditorSection>
 
-          <EditorSection
-            description="Up to 6 tiles in the hero, under the buttons (3 per row), e.g. “30 Days · Daily guided practice”."
-            title="4. Stats tiles">
-            <ObjectListField
-              emptyItem={{ icon: "", title: "", text: "" }}
-              fields={[
-                { key: "icon", label: "Icon", maxLength: 16, narrow: true, placeholder: "Emoji" },
-                { key: "title", label: "Title", maxLength: 60 },
-                { key: "text", label: "Text", maxLength: 120 },
-              ]}
-              itemLabel="Tile"
-              items={content.stats}
-              label="Tiles"
-              maxItems={6}
-              onChange={(stats) => update("stats", stats)}
-            />
-          </EditorSection>
-
           <EditorSection description="The problems this course solves." title="5. Pain points (“Sound familiar?”)">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <TextField
-                id="pain-eyebrow"
-                label="Small heading"
-                maxLength={SHORT}
-                onChange={(eyebrow) => updateIn("painPoints", { eyebrow })}
-                value={content.painPoints.eyebrow}
-              />
-              <TextField
-                hint={HIGHLIGHT_HINT}
-                id="pain-title"
-                label="Title"
-                maxLength={TITLE}
-                onChange={(title) => updateIn("painPoints", { title })}
-                value={content.painPoints.title}
-              />
-            </div>
+            <TextField
+              hint={HIGHLIGHT_HINT}
+              id="pain-title"
+              label="Title"
+              maxLength={TITLE}
+              onChange={(title) => updateIn("painPoints", { title })}
+              value={content.painPoints.title}
+            />
+            <TextField
+              hint="Line under the title. Leave empty to hide it."
+              id="pain-text"
+              label="Description"
+              maxLength={TEXT}
+              multiline
+              onChange={(text) => updateIn("painPoints", { text })}
+              value={content.painPoints.text}
+            />
             <ObjectListField
-              emptyItem={{ icon: "", title: "", text: "" }}
+              emptyItem={{ icon: "", iconUrl: "", iconId: "", title: "", text: "" }}
               fields={[
                 { key: "icon", label: "Icon", maxLength: 16, narrow: true, placeholder: "Emoji" },
                 { key: "title", label: "Title", maxLength: 120 },
                 { key: "text", label: "Text", maxLength: TEXT, multiline: true },
               ]}
+              hint={ICON_HINT}
+              iconUpload={{ urlKey: "iconUrl", idKey: "iconId" }}
               itemLabel="Card"
               items={content.painPoints.items}
               label="Cards"
-              maxItems={6}
               onChange={(items) => updateIn("painPoints", { items })}
             />
           </EditorSection>
 
-          <EditorSection description="Up to 4 numbered steps." title="6. How it works">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <TextField
-                id="how-eyebrow"
-                label="Small heading"
-                maxLength={SHORT}
-                onChange={(eyebrow) => updateIn("howItWorks", { eyebrow })}
-                value={content.howItWorks.eyebrow}
-              />
-              <TextField
-                hint={HIGHLIGHT_HINT}
-                id="how-title"
-                label="Title"
-                maxLength={TITLE}
-                onChange={(title) => updateIn("howItWorks", { title })}
-                value={content.howItWorks.title}
-              />
-            </div>
+          <EditorSection description="Numbered steps." title="6. How it works">
+            <TextField
+              hint={HIGHLIGHT_HINT}
+              id="how-title"
+              label="Title"
+              maxLength={TITLE}
+              onChange={(title) => updateIn("howItWorks", { title })}
+              value={content.howItWorks.title}
+            />
+            <TextField
+              hint="Line under the title. Leave empty to hide it."
+              id="how-text"
+              label="Description"
+              maxLength={TEXT}
+              multiline
+              onChange={(text) => updateIn("howItWorks", { text })}
+              value={content.howItWorks.text}
+            />
             <ObjectListField
               emptyItem={{ title: "", text: "" }}
               fields={[
@@ -530,29 +554,19 @@ function CourseLandingStep({ ref, courseId }: { ref?: Ref<CourseLandingStepHandl
               itemLabel="Step"
               items={content.howItWorks.steps}
               label="Steps"
-              maxItems={4}
               onChange={(steps) => updateIn("howItWorks", { steps })}
             />
           </EditorSection>
 
           <EditorSection description="Dark section with a checklist." title="7. What you'll gain">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <TextField
-                id="gain-eyebrow"
-                label="Small heading"
-                maxLength={SHORT}
-                onChange={(eyebrow) => updateIn("benefits", { eyebrow })}
-                value={content.benefits.eyebrow}
-              />
-              <TextField
-                hint={HIGHLIGHT_HINT}
-                id="gain-title"
-                label="Title"
-                maxLength={TITLE}
-                onChange={(title) => updateIn("benefits", { title })}
-                value={content.benefits.title}
-              />
-            </div>
+            <TextField
+              hint={HIGHLIGHT_HINT}
+              id="gain-title"
+              label="Title"
+              maxLength={TITLE}
+              onChange={(title) => updateIn("benefits", { title })}
+              value={content.benefits.title}
+            />
             <TextField
               id="gain-text"
               label="Text"
@@ -575,13 +589,6 @@ function CourseLandingStep({ ref, courseId }: { ref?: Ref<CourseLandingStepHandl
             description="Text on the left, the lessons in a card on the right. The lessons come from step 2; if the videos are grouped into weeks, the card shows them by week."
             title="8. Curriculum">
             <TextField
-              id="curriculum-eyebrow"
-              label="Small heading"
-              maxLength={SHORT}
-              onChange={(eyebrow) => updateIn("curriculum", { eyebrow })}
-              value={content.curriculum.eyebrow}
-            />
-            <TextField
               hint={`Leave empty for “{lessonCount} lessons. *{totalDuration} total.*”. ${HIGHLIGHT_HINT}`}
               id="curriculum-title"
               label="Title"
@@ -600,25 +607,16 @@ function CourseLandingStep({ ref, courseId }: { ref?: Ref<CourseLandingStepHandl
           </EditorSection>
 
           <EditorSection
-            description="The price card: offer badge, countdown, price, steps, what's included and the button. The prices come from step 1."
+            description="The price card: offer badge, countdown, price, steps and the button. The prices come from step 1."
             title="9. Pricing">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <TextField
-                id="price-eyebrow"
-                label="Small heading"
-                maxLength={SHORT}
-                onChange={(eyebrow) => updateIn("pricing", { eyebrow })}
-                value={content.pricing.eyebrow}
-              />
-              <TextField
-                hint={HIGHLIGHT_HINT}
-                id="price-title"
-                label="Title"
-                maxLength={TITLE}
-                onChange={(title) => updateIn("pricing", { title })}
-                value={content.pricing.title}
-              />
-            </div>
+            <TextField
+              hint={HIGHLIGHT_HINT}
+              id="price-title"
+              label="Title"
+              maxLength={TITLE}
+              onChange={(title) => updateIn("pricing", { title })}
+              value={content.pricing.title}
+            />
             <PhaseTextField
               hint="Under the title."
               id="price-text"
@@ -660,14 +658,6 @@ function CourseLandingStep({ ref, courseId }: { ref?: Ref<CourseLandingStepHandl
                 onChange={(live) => updateIn("pricing", { steps: { ...content.pricing.steps, live } })}
               />
             </div>
-            <TextListField
-              id="price-includes"
-              items={content.pricing.includes}
-              label="Everything included"
-              maxItems={10}
-              maxLength={TITLE}
-              onChange={(includes) => updateIn("pricing", { includes })}
-            />
             <div className="grid gap-4 sm:grid-cols-2">
               <TextField
                 id="price-button"
@@ -688,23 +678,14 @@ function CourseLandingStep({ ref, courseId }: { ref?: Ref<CourseLandingStepHandl
           </EditorSection>
 
           <EditorSection title="10. Instructor">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <TextField
-                id="instructor-eyebrow"
-                label="Small heading"
-                maxLength={SHORT}
-                onChange={(eyebrow) => updateIn("instructor", { eyebrow })}
-                value={content.instructor.eyebrow}
-              />
-              <TextField
-                hint={HIGHLIGHT_HINT}
-                id="instructor-title"
-                label="Name / title"
-                maxLength={TITLE}
-                onChange={(title) => updateIn("instructor", { title })}
-                value={content.instructor.title}
-              />
-            </div>
+            <TextField
+              hint={HIGHLIGHT_HINT}
+              id="instructor-title"
+              label="Name / title"
+              maxLength={TITLE}
+              onChange={(title) => updateIn("instructor", { title })}
+              value={content.instructor.title}
+            />
             <TextField
               id="instructor-bio"
               label="About the instructor"
@@ -726,33 +707,118 @@ function CourseLandingStep({ ref, courseId }: { ref?: Ref<CourseLandingStepHandl
               maxItems={4}
               onChange={(stats) => updateIn("instructor", { stats })}
             />
+            <TextField
+              id="instructor-teaches-label"
+              label="Tags heading"
+              maxLength={SHORT}
+              onChange={(teachesLabel) => updateIn("instructor", { teachesLabel })}
+              placeholder="e.g. She teaches"
+              value={content.instructor.teachesLabel}
+            />
+            <TextListField
+              hint="Up to 8 styles or topics, shown as tags, e.g. “Hatha”, “Pranayama”."
+              id="instructor-teaches"
+              items={content.instructor.teaches}
+              label="Tags"
+              maxItems={8}
+              maxLength={60}
+              onChange={(teaches) => updateIn("instructor", { teaches })}
+            />
+            <div className="grid gap-4 sm:grid-cols-[1fr_200px]">
+              <TextField
+                hint="Shown in a highlighted box. Leave empty to hide it."
+                id="instructor-quote"
+                label="Quote"
+                maxLength={TEXT}
+                multiline
+                onChange={(text) => updateIn("instructor", { quote: { ...content.instructor.quote, text } })}
+                value={content.instructor.quote.text}
+              />
+              <TextField
+                id="instructor-quote-author"
+                label="Quote by"
+                maxLength={80}
+                onChange={(author) => updateIn("instructor", { quote: { ...content.instructor.quote, author } })}
+                placeholder="e.g. Kratika"
+                value={content.instructor.quote.author}
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <TextField
+                id="instructor-primary-label"
+                label="Main button"
+                maxLength={SHORT}
+                onChange={(label) =>
+                  updateIn("instructor", { primaryButton: { ...content.instructor.primaryButton, label } })
+                }
+                placeholder="e.g. Book a call with Kratika"
+                value={content.instructor.primaryButton.label}
+              />
+              <TextField
+                hint={BUTTON_LINK_HINT}
+                id="instructor-primary-url"
+                label="Main button link"
+                maxLength={1000}
+                onChange={(url) => updateIn("instructor", { primaryButton: { ...content.instructor.primaryButton, url } })}
+                value={content.instructor.primaryButton.url}
+              />
+              <TextField
+                id="instructor-secondary-label"
+                label="Second button"
+                maxLength={SHORT}
+                onChange={(label) =>
+                  updateIn("instructor", { secondaryButton: { ...content.instructor.secondaryButton, label } })
+                }
+                placeholder="e.g. View her courses"
+                value={content.instructor.secondaryButton.label}
+              />
+              <TextField
+                hint={BUTTON_LINK_HINT}
+                id="instructor-secondary-url"
+                label="Second button link"
+                maxLength={1000}
+                onChange={(url) =>
+                  updateIn("instructor", { secondaryButton: { ...content.instructor.secondaryButton, url } })
+                }
+                value={content.instructor.secondaryButton.url}
+              />
+            </div>
+            <TextField
+              id="instructor-button-note"
+              label="Line beside the buttons"
+              maxLength={SHORT}
+              onChange={(buttonNote) => updateIn("instructor", { buttonNote })}
+              placeholder="e.g. Free 15-min intro call"
+              value={content.instructor.buttonNote}
+            />
+            <TextField
+              hint="Small label on the photo. Leave empty to hide it."
+              id="instructor-availability"
+              label="Label on the photo"
+              maxLength={80}
+              onChange={(availability) => updateIn("instructor", { availability })}
+              placeholder="e.g. Taking new students this month"
+              value={content.instructor.availability}
+            />
             <ImageField
               aspectClassName="aspect-[4/5]"
-              hint="Fills the left side of the card. A portrait or action photo works best."
+              hint="Portrait photo, shown at 4:5 on the left of the card. Keep the face in the upper part of the photo."
               imageUrl={content.instructor.imageUrl}
+              requiredAspect={{ width: 4, height: 5, example: "1200 × 1500 px" }}
               label="Photo"
               onChange={({ imageUrl, imageId }) => updateIn("instructor", { imageUrl, imageId })}
             />
           </EditorSection>
 
           <EditorSection description="Feedback screenshots and quotes." title="11. Student love">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <TextField
-                id="love-eyebrow"
-                label="Small heading"
-                maxLength={SHORT}
-                onChange={(eyebrow) => updateIn("testimonials", { eyebrow })}
-                value={content.testimonials.eyebrow}
-              />
-              <TextField
-                hint={HIGHLIGHT_HINT}
-                id="love-title"
-                label="Title"
-                maxLength={TITLE}
-                onChange={(title) => updateIn("testimonials", { title })}
-                value={content.testimonials.title}
-              />
-            </div>
+            <TextField
+              hint={HIGHLIGHT_HINT}
+              id="love-title"
+              label="Title"
+              maxLength={TITLE}
+              onChange={(title) => updateIn("testimonials", { title })}
+              value={content.testimonials.title}
+            />
             <label className="flex cursor-pointer items-center gap-3 text-sm" htmlFor="love-screenshots">
               <Checkbox
                 checked={content.testimonials.showScreenshots}
@@ -767,6 +833,7 @@ function CourseLandingStep({ ref, courseId }: { ref?: Ref<CourseLandingStepHandl
                 { key: "text", label: "Quote", maxLength: TEXT, multiline: true },
                 { key: "name", label: "Name", maxLength: 80 },
               ]}
+              hint="Shown until the course has 3 written student reviews; from then on the 3 newest reviews show instead."
               itemLabel="Quote"
               items={content.testimonials.quotes}
               label="Quotes"
@@ -776,23 +843,22 @@ function CourseLandingStep({ ref, courseId }: { ref?: Ref<CourseLandingStepHandl
           </EditorSection>
 
           <EditorSection title="12. FAQ">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <TextField
-                id="faq-eyebrow"
-                label="Small heading"
-                maxLength={SHORT}
-                onChange={(eyebrow) => updateIn("faq", { eyebrow })}
-                value={content.faq.eyebrow}
-              />
-              <TextField
-                hint={HIGHLIGHT_HINT}
-                id="faq-title"
-                label="Title"
-                maxLength={TITLE}
-                onChange={(title) => updateIn("faq", { title })}
-                value={content.faq.title}
-              />
-            </div>
+            <TextField
+              hint={HIGHLIGHT_HINT}
+              id="faq-title"
+              label="Title"
+              maxLength={TITLE}
+              onChange={(title) => updateIn("faq", { title })}
+              value={content.faq.title}
+            />
+            <TextField
+              hint="Line under the title. Leave empty for “A few helpful answers to make your first step feel simple.”"
+              id="faq-text"
+              label="Description"
+              maxLength={TEXT}
+              onChange={(text) => updateIn("faq", { text })}
+              value={content.faq.text}
+            />
             <ObjectListField
               emptyItem={{ question: "", answer: "" }}
               fields={[
@@ -842,6 +908,38 @@ function CourseLandingStep({ ref, courseId }: { ref?: Ref<CourseLandingStepHandl
             />
           </EditorSection>
 
+          <EditorSection
+            description="How the page looks in Google results and when the link is shared (WhatsApp, Instagram, X…). Empty fields use the course title, intro text and cover image."
+            title="14. SEO & sharing">
+            <TextField
+              hint="Shown as the page title in Google and the browser tab. Keep it under 60 characters."
+              id="seo-title"
+              label="Meta title"
+              maxLength={70}
+              onChange={(title) => updateIn("seo", { title })}
+              placeholder="e.g. 30 Days to Full Mobility | Kratika Yoga"
+              value={content.seo.title}
+            />
+            <TextField
+              hint="Shown under the title in Google and in link previews. Aim for 120–160 characters."
+              id="seo-description"
+              label="Meta description"
+              maxLength={160}
+              multiline
+              onChange={(description) => updateIn("seo", { description })}
+              placeholder="e.g. A gentle 30-day yoga course to unlock your hips, spine and shoulders. 10–12 minutes a day, beginner friendly."
+              value={content.seo.description}
+            />
+            <ImageField
+              aspectClassName="aspect-[1200/630]"
+              hint="The preview image when the link is shared. It must be exactly 1200 × 630 px."
+              imageUrl={content.seo.imageUrl}
+              label="Meta image"
+              onChange={({ imageUrl, imageId }) => updateIn("seo", { imageUrl, imageId })}
+              requiredSize={{ width: 1200, height: 630 }}
+            />
+          </EditorSection>
+
           <div className="flex justify-end">
             <Button
               className="h-10"
@@ -851,7 +949,8 @@ function CourseLandingStep({ ref, courseId }: { ref?: Ref<CourseLandingStepHandl
                     "Replace every section with the starting template? Your unsaved and saved text in this step will be overwritten when you save.",
                   )
                 ) {
-                  setContent(structuredClone(LANDING_CONTENT_TEMPLATE));
+                  // SEO isn't page text, so the reset keeps it.
+                  setContent((current) => ({ ...structuredClone(LANDING_CONTENT_TEMPLATE), seo: current.seo }));
                 }
               }}
               type="button"
