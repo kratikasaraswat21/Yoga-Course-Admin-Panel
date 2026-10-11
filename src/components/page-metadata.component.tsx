@@ -65,6 +65,13 @@ const getPageMetadata = (pathname: string) => {
     };
   }
 
+  if (pathname === "/instagram-feedback") {
+    return {
+      title: "Instagram Feedback | Kratika Yoga Admin",
+      description: "Manage the student feedback screenshots shown on the Kratika Yoga website.",
+    };
+  }
+
   if (pathname === "/affiliate-products") {
     return {
       title: "Affiliate Products | Kratika Yoga Admin",

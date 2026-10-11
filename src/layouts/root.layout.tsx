@@ -1,5 +1,6 @@
 import AuthRoutes from "@/router/auth.router";
 import AffiliateProductManagementPage from "@/modules/affiliate-product/affiliateProductManagement";
+import InstagramFeedbackManagementPage from "@/modules/instagram-feedback/instagramFeedbackManagement";
 import DashboardLayout from "@/layouts/dashboard.layout";
 import AddCoursePage from "@/modules/course/add-course/add-course-page";
 import CourseManagementPage from "@/modules/course/courseManagement";
@@ -35,6 +36,9 @@ function RootLayout() {
           </Route>
           <Route path="/affiliate-products" element={<DashboardLayout />}>
             <Route index element={<AffiliateProductManagementPage />} />
+          </Route>
+          <Route path="/instagram-feedback" element={<DashboardLayout />}>
+            <Route index element={<InstagramFeedbackManagementPage />} />
           </Route>
         </Route>
         <Route path="*" element={<RedirectToDashboard />} />

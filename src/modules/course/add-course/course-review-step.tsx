@@ -1,4 +1,4 @@
-import { CheckCircle2, Play, X } from "lucide-react";
+import { CheckCircle2, ExternalLink, Lock, Play, X } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,8 +6,10 @@ import { toast } from "@/components/ui/variants/toast.manager";
 import RichTextContent from "@/components/ui/rich-text-content";
 import { useDebounce } from "@/hooks/useDebounce";
 import { multipleApiHandler } from "@/utils/api/multiple.api";
+import { EnvConfig } from "@/utils/config/envConfig";
 import { formatCourseVideos } from "@/utils/helper/course-video.helper";
-import { useEffect, useRef, useState } from "react";
+import { formatScheduleDate } from "@/utils/helper/ist-date.helper";
+import { Fragment, useEffect, useRef, useState } from "react";
 import type { CourseVideo } from "./add-course.types";
 
 const ReadyStatus = () => (
@@ -70,7 +72,31 @@ function CourseReviewStep({
   const discountAmount = (coursePrice * discountPercentage) / 100;
   const totalPayable = Number(course?.totalPayableAmount ?? coursePrice - discountAmount);
   const courseVideos = Array.isArray(course?.courseVideos) ? formatCourseVideos(course.courseVideos, courseId) : videos;
+  // Weeks/groups from the backend ("Other videos" last); empty when the course doesn't use groups.
+  const videoGroups = Array.isArray(course?.groups)
+    ? (course.groups as {
+        id: string | null;
+        title: string;
+        videos: { id: string }[];
+      }[])
+    : [];
+  const videosById = new Map(courseVideos.map((video) => [video.id, video]));
+  const videoSections = videoGroups.length
+    ? videoGroups.map((group) => ({
+        key: group.id ?? "ungrouped",
+        title: group.title,
+        videos: group.videos.map((video) => videosById.get(video.id)).filter((video) => video !== undefined),
+      }))
+    : [{ key: "all", title: "", videos: courseVideos }];
   const thumbnailUrl = String(course?.thumbnailUrl ?? "");
+  const courseSlug = String(course?.slug ?? "");
+  const isLandingPageEnabled = course?.landingPageEnabled === true;
+  const isPrelaunchEnabled = course?.prelaunchEnabled === true;
+  const isSequentialUnlock = course?.sequentialUnlock === true;
+  const prelaunchStartDate = String(course?.prelaunchStartDate ?? "");
+  const prelaunchEndDate = String(course?.prelaunchEndDate ?? "");
+  const prelaunchDiscount = Number(course?.prelaunchDiscount ?? 0);
+  const prelaunchPayable = Number(course?.prelaunchPayableAmount ?? 0);
   return (
     <div className="mx-auto w-full max-w-[1580px] space-y-5 px-4 py-5 sm:px-6 lg:px-6">
       {showReviewNotice && (
@@ -110,6 +136,25 @@ function CourseReviewStep({
               <span className="text-slate-500">Course ID</span>
               <span>{String(course?.id ?? courseId)}</span>
             </div>
+            <div className="grid grid-cols-[minmax(110px,35%)_1fr] gap-4">
+              <span className="text-slate-500">Landing page</span>
+              <span className="min-w-0">
+                {!course ? (
+                  "Loading..."
+                ) : isLandingPageEnabled ? (
+                  <a
+                    className="inline-flex max-w-full items-center gap-1.5 font-medium underline-offset-4 hover:underline"
+                    href={`${EnvConfig.LANDING_SITE_URL}/courses/${courseSlug}`}
+                    rel="noreferrer"
+                    target="_blank">
+                    <span className="truncate">On · /courses/{courseSlug}</span>
+                    <ExternalLink className="size-3.5 shrink-0" />
+                  </a>
+                ) : (
+                  "Off"
+                )}
+              </span>
+            </div>
           </CardContent>
         </Card>
         <Card className="gap-0 py-0">
@@ -119,23 +164,70 @@ function CourseReviewStep({
           <CardContent className="space-y-4 px-5 py-5 text-sm">
             <div className="flex justify-between">
               <span className="text-slate-500">Course price</span>
-              <span>₹{coursePrice.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+              <span>
+                ₹
+                {coursePrice.toLocaleString("en-IN", {
+                  minimumFractionDigits: 2,
+                })}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">Discount</span>
               <span className="text-emerald-700">
-                -₹{discountAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                -₹
+                {discountAmount.toLocaleString("en-IN", {
+                  minimumFractionDigits: 2,
+                })}
               </span>
             </div>
             <div className="border-t pt-4">
               <div className="flex justify-between">
                 <span>Total payable</span>
-                <strong>₹{totalPayable.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</strong>
+                <strong>
+                  ₹
+                  {totalPayable.toLocaleString("en-IN", {
+                    minimumFractionDigits: 2,
+                  })}
+                </strong>
               </div>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">Round off</span>
               <span className="text-slate-500">—</span>
+            </div>
+            <div className="flex justify-between border-t pt-4">
+              <span className="text-slate-500">Lock videos in order</span>
+              <span>{course ? (isSequentialUnlock ? "On" : "Off") : "Loading..."}</span>
+            </div>
+            <div className="space-y-3 border-t pt-4">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Prelaunch offer</span>
+                <span>{course ? (isPrelaunchEnabled ? "On" : "Off") : "Loading..."}</span>
+              </div>
+              {isPrelaunchEnabled && (
+                <>
+                  <div className="flex justify-between gap-4">
+                    <span className="text-slate-500">Runs</span>
+                    <span className="text-right">
+                      {formatScheduleDate(prelaunchStartDate)}, 12:00 AM → {formatScheduleDate(prelaunchEndDate)}, 12:00
+                      AM (IST)
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Prelaunch discount</span>
+                    <span className="text-emerald-700">{prelaunchDiscount}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Prelaunch payable</span>
+                    <strong>
+                      ₹
+                      {prelaunchPayable.toLocaleString("en-IN", {
+                        minimumFractionDigits: 2,
+                      })}
+                    </strong>
+                  </div>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -165,44 +257,61 @@ function CourseReviewStep({
           <CardContent className="px-5 py-5">
             <div className="space-y-3">
               {courseVideos.length ? (
-                courseVideos.map((video) => (
-                  <div
-                    className="flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50/60 p-3 transition hover:border-slate-300 hover:bg-white hover:shadow-sm"
-                    key={video.id}>
-                    <div className="group relative flex size-21 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-linear-to-br from-slate-200 via-slate-300 to-slate-500">
-                      {video.thumbnailUrl ? (
-                        <img alt="" className="size-full  object-cover" src={video.thumbnailUrl} />
-                      ) : (
-                        <Play className="size-7 texst-white" fill="currentColor" />
-                      )}
-                      {video.thumbnailUrl && (
-                        <span className="absolute inset-0 flex items-center justify-center bg-slate-950/20 opacity-0 transition group-hover:opacity-100">
-                          <span className="flex size-8 items-center justify-center rounded-full bg-white/95 text-slate-900 shadow">
-                            <Play className="ml-0.5 size-4" fill="currentColor" />
-                          </span>
-                        </span>
-                      )}
-                      <span className="absolute bottom-1 right-1 rounded bg-slate-950/80 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                        {formatDuration(video.durationSeconds)}
-                      </span>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-slate-950">
-                        {video.title || video.originalFileName}
+                videoSections.map((section) => (
+                  <Fragment key={section.key}>
+                    {section.title && (
+                      <p className="pt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        {section.title} · {section.videos.length} {section.videos.length === 1 ? "video" : "videos"}
                       </p>
-                      <p className="mt-1 truncate text-xs text-slate-500">{video.originalFileName}</p>
-                    </div>
-                    <div className="shrink-0">
-                      {video.status === "Ready" ? (
-                        <ReadyStatus />
-                      ) : (
-                        <span className="inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700">
-                          <span className="size-2 rounded-full bg-blue-500" />
-                          Processing
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                    )}
+                    {section.videos.length === 0 && (
+                      <p className="text-xs text-slate-400">No videos in this group yet.</p>
+                    )}
+                    {section.videos.map((video) => (
+                      <div
+                        className="flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50/60 p-3 transition hover:border-slate-300 hover:bg-white hover:shadow-sm"
+                        key={video.id}>
+                        <div className="group relative flex size-21 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-linear-to-br from-slate-200 via-slate-300 to-slate-500">
+                          {video.thumbnailUrl ? (
+                            <img alt="" className="size-full  object-cover" src={video.thumbnailUrl} />
+                          ) : (
+                            <Play className="size-7 texst-white" fill="currentColor" />
+                          )}
+                          {video.thumbnailUrl && (
+                            <span className="absolute inset-0 flex items-center justify-center bg-slate-950/20 opacity-0 transition group-hover:opacity-100">
+                              <span className="flex size-8 items-center justify-center rounded-full bg-white/95 text-slate-900 shadow">
+                                <Play className="ml-0.5 size-4" fill="currentColor" />
+                              </span>
+                            </span>
+                          )}
+                          <span className="absolute bottom-1 right-1 rounded bg-slate-950/80 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                            {formatDuration(video.durationSeconds)}
+                          </span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-slate-950">
+                            {video.title || video.originalFileName}
+                          </p>
+                          <p className="mt-1 truncate text-xs text-slate-500">{video.originalFileName}</p>
+                          {video.isScheduled && video.releaseDate && (
+                            <span className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">
+                              <Lock className="size-3" /> Releases {formatScheduleDate(video.releaseDate)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="shrink-0">
+                          {video.status === "Ready" ? (
+                            <ReadyStatus />
+                          ) : (
+                            <span className="inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700">
+                              <span className="size-2 rounded-full bg-blue-500" />
+                              Processing
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </Fragment>
                 ))
               ) : (
                 <div className="rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">

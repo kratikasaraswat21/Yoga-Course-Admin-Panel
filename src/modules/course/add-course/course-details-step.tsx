@@ -1,4 +1,4 @@
-import { ImageUp, Info, LoaderCircle, X } from "lucide-react";
+import { CalendarClock, ImageUp, Info, Link2, ListOrdered, LoaderCircle, X } from "lucide-react";
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -13,16 +13,25 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { multipleApiHandler, type CommonDataFormat } from "@/utils/api/multiple.api";
 import { ERROR_MESSAGES } from "@/utils/constants/error.constants";
 import { SUCCESS_MESSAGES } from "@/utils/constants/success.constants";
+import { EnvConfig } from "@/utils/config/envConfig";
+import { calculatePayableAmount } from "@/utils/helper/course.helper";
 import { isValidUrl } from "@/utils/helper/helper";
+import { addDaysToDate, formatScheduleDate, getIstToday } from "@/utils/helper/ist-date.helper";
+import { COURSE_SLUG_MAX_LENGTH, slugify } from "@/utils/helper/slug.helper";
 import type { CloudflareImageUploadResponse } from "@/utils/interface/global.interface";
-import type { AddCourseDetailsErrors } from "@/utils/validation/course.validation";
+import {
+  MAX_PRELAUNCH_DAYS,
+  validatePrelaunchDetails,
+  type AddCourseDetailsErrors,
+} from "@/utils/validation/course.validation";
 import type { AddCourseDetails } from "./add-course.types";
 
 const normalizePriceInput = (value: string) => value.replace(/^0+(?=\d)/, "");
 
 function CourseDetailsStep({
   details,
-  errors,
+  errors: submitErrors,
+  savedPrelaunchStartDate,
   courseId,
   onDetailsLoaded,
   onChange,
@@ -32,6 +41,8 @@ function CourseDetailsStep({
 }: {
   details: AddCourseDetails;
   errors: AddCourseDetailsErrors;
+  /** Start date already saved on the course; a prelaunch that has started may keep it. */
+  savedPrelaunchStartDate: string;
   courseId: string;
   onDetailsLoaded: (details: AddCourseDetails) => void;
   onChange: (details: AddCourseDetails) => void;
@@ -51,6 +62,35 @@ function CourseDetailsStep({
   const payable = details.roundPayableAmount ? Math.round(price - discountAmount) : price - discountAmount;
   const update = <Key extends keyof AddCourseDetails>(key: Key, value: AddCourseDetails[Key]) =>
     onChange({ ...details, [key]: value });
+  const today = getIstToday();
+  // Prelaunch problems show while typing; "required" errors from the save attempt are kept too.
+  const errors: AddCourseDetailsErrors = {
+    ...submitErrors,
+    ...validatePrelaunchDetails(details, savedPrelaunchStartDate),
+  };
+  // A started prelaunch keeps its past start date selectable; otherwise past days are blocked.
+  const minStartDate = savedPrelaunchStartDate && savedPrelaunchStartDate < today ? savedPrelaunchStartDate : today;
+  const earliestEndDate = addDaysToDate(details.prelaunchStartDate || today, 1);
+  const minEndDate = earliestEndDate > addDaysToDate(today, 1) ? earliestEndDate : addDaysToDate(today, 1);
+  const maxEndDate = details.prelaunchStartDate
+    ? addDaysToDate(details.prelaunchStartDate, MAX_PRELAUNCH_DAYS)
+    : undefined;
+  const prelaunchDiscount = Math.min(100, Math.max(0, Number(details.prelaunchDiscount) || 0));
+  const prelaunchPayable = calculatePayableAmount(price, prelaunchDiscount, details.roundPayableAmount);
+
+  // The URL follows the title until the admin edits it by hand.
+  const updateTitle = (title: string) => {
+    const slugFollowsTitle = !details.slug || details.slug === slugify(details.title);
+    onChange({ ...details, title, slug: slugFollowsTitle ? slugify(title) : details.slug });
+  };
+
+  const togglePrelaunch = (enabled: boolean) =>
+    onChange({
+      ...details,
+      prelaunchEnabled: enabled,
+      // Turning the offer off clears its dates and discount.
+      ...(enabled ? {} : { prelaunchStartDate: "", prelaunchEndDate: "", prelaunchDiscount: "" }),
+    });
 
   const handleThumbnailChange = (event: ChangeEvent<HTMLInputElement>) => setThumbnail(event.target.files?.[0]);
 
@@ -67,6 +107,12 @@ function CourseDetailsStep({
     if (res?.data?.success && res.data.data) {
       const course = res.data.data.course ?? res.data.data;
       const fetchedDetails: AddCourseDetails = {
+        slug: String(course.slug ?? ""),
+        prelaunchEnabled: Boolean(course.prelaunchEnabled),
+        prelaunchStartDate: String(course.prelaunchStartDate ?? ""),
+        prelaunchEndDate: String(course.prelaunchEndDate ?? ""),
+        prelaunchDiscount: course.prelaunchEnabled ? String(course.prelaunchDiscount ?? "") : "",
+        sequentialUnlock: course.sequentialUnlock === true,
         description: String(course.description ?? ""),
         discountPercentage: String(course.discountPercentage ?? course.discount ?? "0"),
         price: String(course.price ?? "0"),
@@ -304,11 +350,39 @@ function CourseDetailsStep({
                 aria-invalid={Boolean(errors.title)}
                 className="h-10 bg-white"
                 id="course-title"
-                onChange={(event) => update("title", event.target.value)}
+                onChange={(event) => updateTitle(event.target.value)}
                 placeholder="e.g. Foundations of Hatha Yoga"
                 value={details.title}
               />
               {errors.title && <p className="text-sm text-red-600">{errors.title}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="course-slug">Course page URL</Label>
+              <div
+                className={`flex h-10 items-center overflow-hidden rounded-lg border bg-white text-sm ${errors.slug ? "border-red-500" : "border-input"}`}>
+                <span className="flex h-full shrink-0 items-center gap-1.5 border-r bg-slate-50 px-3 text-slate-500">
+                  <Link2 className="size-4" />
+                  <span className="hidden sm:inline">{EnvConfig.LANDING_SITE_URL.replace(/^https?:\/\//, "")}</span>
+                  /courses/
+                </span>
+                <input
+                  aria-invalid={Boolean(errors.slug)}
+                  className="h-full min-w-0 flex-1 px-3 outline-none"
+                  id="course-slug"
+                  maxLength={COURSE_SLUG_MAX_LENGTH}
+                  onBlur={(event) => update("slug", slugify(event.target.value))}
+                  onChange={(event) => update("slug", event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
+                  placeholder="foundations-of-hatha-yoga"
+                  value={details.slug}
+                />
+              </div>
+              {errors.slug ? (
+                <p className="text-sm text-red-600">{errors.slug}</p>
+              ) : (
+                <p className="text-xs text-slate-500">
+                  Used for the public course page, if you turn it on in the landing page step.
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="course-description">Description</Label>
@@ -384,6 +458,105 @@ function CourseDetailsStep({
                   </span>
                 </span>
               </label>
+            </div>
+            <div className="rounded-xl border p-4 sm:p-5">
+              <label className="flex cursor-pointer items-start gap-3" htmlFor="sequential-unlock">
+                <Checkbox
+                  checked={details.sequentialUnlock}
+                  id="sequential-unlock"
+                  onCheckedChange={(checked) => update("sequentialUnlock", checked === true)}
+                />
+                <span>
+                  <span className="flex items-center gap-2 text-sm font-medium">
+                    <ListOrdered className="size-4 text-slate-500" /> Lock videos in order
+                  </span>
+                  <span className="mt-1 block text-xs text-slate-500">
+                    Buyers must complete each video before the next one opens. Videos they have already watched always
+                    stay open. You can change this at any time.
+                  </span>
+                </span>
+              </label>
+            </div>
+            <div className="rounded-xl border p-4 sm:p-5">
+              <label className="flex cursor-pointer items-start gap-3" htmlFor="prelaunch-enabled">
+                <Checkbox
+                  checked={details.prelaunchEnabled}
+                  id="prelaunch-enabled"
+                  onCheckedChange={(checked) => togglePrelaunch(checked === true)}
+                />
+                <span>
+                  <span className="flex items-center gap-2 text-sm font-medium">
+                    <CalendarClock className="size-4 text-slate-500" /> Enable prelaunch offer
+                  </span>
+                  <span className="mt-1 block text-xs text-slate-500">
+                    Optional. Sell the course at a special price for a limited time. During the offer the prelaunch
+                    discount replaces the normal discount.
+                  </span>
+                </span>
+              </label>
+              {details.prelaunchEnabled && (
+                <div className="mt-4 space-y-4 border-t pt-4">
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="prelaunch-start-date">Start date</Label>
+                      <Input
+                        aria-invalid={Boolean(errors.prelaunchStartDate)}
+                        className="h-10 bg-white"
+                        id="prelaunch-start-date"
+                        min={minStartDate}
+                        onChange={(event) => update("prelaunchStartDate", event.target.value)}
+                        type="date"
+                        value={details.prelaunchStartDate}
+                      />
+                      {errors.prelaunchStartDate && <p className="text-sm text-red-600">{errors.prelaunchStartDate}</p>}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="prelaunch-end-date">End date</Label>
+                      <Input
+                        aria-invalid={Boolean(errors.prelaunchEndDate)}
+                        className="h-10 bg-white"
+                        id="prelaunch-end-date"
+                        max={maxEndDate}
+                        min={minEndDate}
+                        onChange={(event) => update("prelaunchEndDate", event.target.value)}
+                        type="date"
+                        value={details.prelaunchEndDate}
+                      />
+                      {errors.prelaunchEndDate && <p className="text-sm text-red-600">{errors.prelaunchEndDate}</p>}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="prelaunch-discount">Prelaunch discount (%)</Label>
+                      <Input
+                        aria-invalid={Boolean(errors.prelaunchDiscount)}
+                        className="h-10 bg-white"
+                        id="prelaunch-discount"
+                        max="100"
+                        min="0"
+                        onChange={(event) => {
+                          const value = event.target.value.replace(/[^\d.]/g, "");
+                          update("prelaunchDiscount", value === "" ? "" : String(Math.min(100, Number(value))));
+                        }}
+                        type="number"
+                        value={details.prelaunchDiscount}
+                      />
+                      {errors.prelaunchDiscount && <p className="text-sm text-red-600">{errors.prelaunchDiscount}</p>}
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Both dates switch at 12:00 AM IST. The offer can run for up to {MAX_PRELAUNCH_DAYS} days, from the
+                    start date until the end date begins
+                    {details.prelaunchStartDate &&
+                    details.prelaunchEndDate &&
+                    details.prelaunchEndDate > details.prelaunchStartDate
+                      ? ` (${formatScheduleDate(details.prelaunchStartDate)}, 12:00 AM to ${formatScheduleDate(details.prelaunchEndDate)}, 12:00 AM).`
+                      : "."}
+                  </p>
+                  <div className="flex items-center justify-between rounded-lg bg-amber-50 px-4 py-3 text-sm">
+                    <span className="text-amber-900">Prelaunch payable amount</span>
+                    <strong className="text-amber-950">₹{prelaunchPayable.toFixed(2)}</strong>
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

@@ -5,7 +5,8 @@ import type { AddCourseStep } from "./add-course.types";
 const steps = [
   { number: 1, label: "Course details" },
   { number: 2, label: "Course videos" },
-  { number: 3, label: "Review & publish" },
+  { number: 3, label: "Landing page" },
+  { number: 4, label: "Review & publish" },
 ] as const;
 
 function AddCourseStepper({
@@ -18,7 +19,7 @@ function AddCourseStepper({
   return (
     <nav
       aria-label="Course creation progress"
-      className="mx-auto grid w-full max-w-350 grid-cols-[auto_minmax(48px,1fr)_auto_minmax(48px,1fr)_auto] items-center gap-3">
+      className="mx-auto grid w-full max-w-350 grid-cols-[auto_minmax(24px,1fr)_auto_minmax(24px,1fr)_auto_minmax(24px,1fr)_auto] items-center gap-3">
       {steps.map((step, index) => {
         const isCurrent = step.number === currentStep;
         const isComplete = step.number < currentStep;

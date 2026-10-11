@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import {
@@ -22,18 +22,41 @@ import AddCourseStepper from "./add-course-stepper";
 import { clearAddCourseDraft } from "./add-course.storage";
 import type { AddCourseDetails, AddCourseDraft, AddCourseStep } from "./add-course.types";
 import CourseDetailsStep from "./course-details-step";
+import CourseLandingStep, { type CourseLandingStepHandle } from "./course-landing-step";
 import CourseReviewStep from "./course-review-step";
 import CourseVideosStep from "./course-videos-step";
 
 const emptyDetails: AddCourseDetails = {
   title: "",
+  slug: "",
   description: "",
   price: "0",
   discountPercentage: "0",
   roundPayableAmount: false,
   thumbnailURL: "",
   thumbnailId: "",
+  prelaunchEnabled: false,
+  prelaunchStartDate: "",
+  prelaunchEndDate: "",
+  prelaunchDiscount: "",
+  sequentialUnlock: false,
 };
+
+const PRELAUNCH_ERROR_KEYS = ["prelaunchStartDate", "prelaunchEndDate", "prelaunchDiscount"] as const;
+
+// Prelaunch fields sent with step one. Disabled means "no prelaunch" and clears it on the server.
+// The "Lock videos in order" switch is sent with them.
+const getPrelaunchPayload = (details: AddCourseDetails) => ({
+  sequentialUnlock: details.sequentialUnlock,
+  prelaunchEnabled: details.prelaunchEnabled,
+  ...(details.prelaunchEnabled
+    ? {
+        prelaunchStartDate: details.prelaunchStartDate,
+        prelaunchEndDate: details.prelaunchEndDate,
+        prelaunchDiscount: details.prelaunchDiscount,
+      }
+    : {}),
+});
 
 function AddCoursePage() {
   const navigate = useNavigate();
@@ -41,7 +64,8 @@ function AddCoursePage() {
   const urlCourseId = searchParams.get("courseId") ?? searchParams.get("id") ?? "";
   const isEditing = Boolean(urlCourseId);
   const urlStep = Number(searchParams.get("step"));
-  const stepFromUrl: AddCourseStep | null = urlStep === 1 || urlStep === 2 || urlStep === 3 ? urlStep : null;
+  const stepFromUrl: AddCourseStep | null =
+    urlStep === 1 || urlStep === 2 || urlStep === 3 || urlStep === 4 ? urlStep : null;
   const [draft, setDraft] = useState<AddCourseDraft>(() => {
     return { courseId: urlCourseId, step: stepFromUrl ?? (1 as AddCourseStep), details: emptyDetails, videos: [] };
   });
@@ -51,6 +75,8 @@ function AddCoursePage() {
   const [errors, setErrors] = useState<AddCourseDetailsErrors>({});
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [isSavingLandingPage, setIsSavingLandingPage] = useState(false);
+  const landingStepRef = useRef<CourseLandingStepHandle>(null);
 
   const currentStep = stepFromUrl ?? draft.step;
   const hasStepOneChanges = JSON.stringify(draft.details) !== JSON.stringify(savedStepOneDetails);
@@ -97,6 +123,10 @@ function AddCoursePage() {
   };
 
   const handelSaveAsDraftFunction = async () => {
+    // A draft can be incomplete: only send the URL and prelaunch fields when they are valid, otherwise keep what's saved.
+    const { errors: draftErrors } = validateAddCourseDetails(draft.details, savedStepOneDetails.prelaunchStartDate);
+    const canSavePrelaunch = PRELAUNCH_ERROR_KEYS.every((key) => !draftErrors[key]);
+
     try {
       const response = await multipleApiHandler([
         {
@@ -110,6 +140,8 @@ function AddCoursePage() {
             roundPayableAmount: false,
             thumbnailURL: draft?.details?.thumbnailURL?.trim() ? draft?.details?.thumbnailURL : "-",
             thumbnailId: draft?.details?.thumbnailId?.trim() ? draft?.details?.thumbnailId : "-",
+            ...(draft.details.slug && !draftErrors.slug ? { slug: draft.details.slug } : {}),
+            ...(canSavePrelaunch ? getPrelaunchPayload(draft.details) : {}),
           },
           method: "POST",
         },
@@ -120,7 +152,7 @@ function AddCoursePage() {
       if (!res?.data?.success) {
         toast.add({
           title: ERROR_MESSAGES.COURSE_DRAFT_SAVE_FAILED_TITLE,
-          description: ERROR_MESSAGES.COURSE_DRAFT_SAVE_FAILED_DESCRIPTION,
+          description: res?.data?.message ?? ERROR_MESSAGES.COURSE_DRAFT_SAVE_FAILED_DESCRIPTION,
           type: "error",
         });
         return false;
@@ -181,7 +213,18 @@ function AddCoursePage() {
         {
           endPoint: draft?.courseId ? `/course/edit/${draft?.courseId}` : "/course/add/step-one",
           protected: true,
-          data: { ...draft.details, ...(draft.courseId ? { courseId: draft.courseId } : {}) },
+          data: {
+            title: draft.details.title,
+            slug: draft.details.slug,
+            description: draft.details.description,
+            price: draft.details.price,
+            discountPercentage: draft.details.discountPercentage,
+            roundPayableAmount: draft.details.roundPayableAmount,
+            thumbnailURL: draft.details.thumbnailURL,
+            thumbnailId: draft.details.thumbnailId,
+            ...getPrelaunchPayload(draft.details),
+            ...(draft.courseId ? { courseId: draft.courseId } : {}),
+          },
           method: "POST",
         },
       ]);
@@ -189,9 +232,11 @@ function AddCoursePage() {
       const res = response[0];
 
       if (!res?.data?.success || !res.data.data?.course_id) {
+        const message = res?.data?.message;
+        if (res?.status === 409 && message) setErrors({ slug: message });
         toast.add({
           title: ERROR_MESSAGES.COURSE_DRAFT_SAVE_FAILED_TITLE,
-          description: ERROR_MESSAGES.COURSE_DRAFT_SAVE_FAILED_DESCRIPTION,
+          description: message ?? ERROR_MESSAGES.COURSE_DRAFT_SAVE_FAILED_DESCRIPTION,
           type: "error",
         });
         return;
@@ -203,8 +248,9 @@ function AddCoursePage() {
         type: "success",
       });
 
-      setSavedStepOneDetails(draft.details);
-      setDraft((pervData) => ({ ...pervData, courseId: res?.data?.data?.course_id }));
+      const savedDetails = { ...draft.details, slug: String(res.data.data.slug ?? draft.details.slug) };
+      setSavedStepOneDetails(savedDetails);
+      setDraft((pervData) => ({ ...pervData, courseId: res?.data?.data?.course_id, details: savedDetails }));
       setStep(2);
 
       setSearchParams((current) => {
@@ -222,7 +268,7 @@ function AddCoursePage() {
   }, 100);
 
   const handleSaveAndContinue = () => {
-    const validation = validateAddCourseDetails(draft.details);
+    const validation = validateAddCourseDetails(draft.details, savedStepOneDetails.prelaunchStartDate);
     setErrors(validation.errors);
     if (!validation.isValid) return;
 
@@ -266,6 +312,17 @@ function AddCoursePage() {
     }
   }, 100);
 
+  const handleSaveLandingPage = async () => {
+    if (isSavingLandingPage) return;
+    setIsSavingLandingPage(true);
+    try {
+      const didSave = (await landingStepRef.current?.save()) ?? false;
+      if (didSave) setStep(4);
+    } finally {
+      setIsSavingLandingPage(false);
+    }
+  };
+
   const handelPublishCourse = (courseId: string, courseTitle = draft.details.title.trim() || "Course") => {
     if (!courseId || isPublishing) return;
     setIsPublishing(true);
@@ -295,6 +352,7 @@ function AddCoursePage() {
             courseId={draft.courseId}
             details={draft.details}
             errors={errors}
+            savedPrelaunchStartDate={savedStepOneDetails.prelaunchStartDate}
             isEditing={isEditing}
             onDetailsLoaded={(details) => {
               setDraft((current) => ({ ...current, details }));
@@ -309,6 +367,8 @@ function AddCoursePage() {
           />
         ) : currentStep === 2 ? (
           <CourseVideosStep courseId={draft?.courseId} videos={draft.videos} onVideosChange={handleVideosChange} />
+        ) : currentStep === 3 ? (
+          <CourseLandingStep courseId={draft.courseId} ref={landingStepRef} />
         ) : (
           <CourseReviewStep
             videos={draft.videos}
@@ -339,10 +399,20 @@ function AddCoursePage() {
           )}
           {currentStep === 2 && (
             <Button className="h-11 px-6" onClick={() => setStep(3)} type="button">
-              Continue to review
+              Continue
             </Button>
           )}
           {currentStep === 3 && (
+            <Button
+              className="h-11 gap-2 px-6"
+              disabled={isSavingLandingPage}
+              onClick={handleSaveLandingPage}
+              type="button">
+              {isSavingLandingPage && <LoaderCircle className="size-4 animate-spin" />}
+              Save & continue to review
+            </Button>
+          )}
+          {currentStep === 4 && (
             <>
               <Button
                 className="h-11 gap-2 px-6"
