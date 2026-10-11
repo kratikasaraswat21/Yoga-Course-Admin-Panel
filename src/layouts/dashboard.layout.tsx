@@ -11,9 +11,12 @@ import { SUCCESS_MESSAGES } from "@/utils/constants/success.constants";
 import { clearLocalSessionStorage, getDataFromSecureCookie } from "@/utils/helper/helper";
 import { LoaderCircle } from "lucide-react";
 
+const AUTH_VERIFICATION_FAILED_KEY = "yoga_platform_auth_verification_failed";
+
 function DashboardLayout() {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   const openSidebar = () => setIsSidebarOpen(true);
@@ -29,31 +32,34 @@ function DashboardLayout() {
           type: "error",
         });
         clearLocalSessionStorage();
-        navigate("/auth/login");
+        navigate("/auth/login", { replace: true });
         return;
       }
       const response = await multipleApiHandler([{ endPoint: "auth/verify/me", protected: true, method: "GET" }]);
 
       const res = response[0];
       if (!res?.data?.success) {
+        clearLocalSessionStorage();
+        sessionStorage.setItem(AUTH_VERIFICATION_FAILED_KEY, "true");
         toast.add({
           title: ERROR_MESSAGES.SESSION_EXPIRED_TITLE,
           description: res?.data?.message ?? ERROR_MESSAGES.SESSION_EXPIRED_DESCRIPTION,
           type: "error",
         });
-        clearLocalSessionStorage();
-        navigate("/auth/login");
+        navigate("/auth/login", { replace: true });
         return;
       }
 
       setIsCheckingAuth(false);
     } catch {
-      setIsCheckingAuth(false);
+      clearLocalSessionStorage();
+      sessionStorage.setItem(AUTH_VERIFICATION_FAILED_KEY, "true");
       toast.add({
         title: ERROR_MESSAGES.SESSION_VERIFY_TITLE,
         description: ERROR_MESSAGES.SESSION_VERIFY_DESCRIPTION,
         type: "error",
       });
+      navigate("/auth/login", { replace: true });
     }
   }, 100);
 
@@ -73,13 +79,20 @@ function DashboardLayout() {
   }
 
   return (
-    <div className="flex h-dvh items-stretch w-full max-w-full overflow-hidden bg-slate-100 text-slate-950">
-      <DashboardSidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
+    <div className="relative flex h-dvh items-stretch w-full max-w-full overflow-hidden bg-slate-100 text-slate-950">
+      <DashboardSidebar
+        isCollapsed={isSidebarCollapsed}
+        isOpen={isSidebarOpen}
+        onClose={closeSidebar}
+        onToggleCollapse={() => setIsSidebarCollapsed((current) => !current)}
+      />
 
-      <div className="flex  min-h-0 min-w-0 flex-col overflow-hidden w-full">
+      <div className="relative flex min-h-0 min-w-0 flex-col overflow-hidden w-full">
         <DashboardNavbar onOpenSidebar={openSidebar} />
 
-        <main className="dashboard-scroll-area min-h-0 min-w-0 h-full overflow-y-auto">
+        {/* relative: absolutely positioned content (e.g. sr-only file inputs) stays inside this scroll area
+            instead of stretching the browser page below the layout. */}
+        <main className="dashboard-scroll-area relative min-h-0 min-w-0 h-full overflow-y-auto">
           <Outlet />
         </main>
       </div>

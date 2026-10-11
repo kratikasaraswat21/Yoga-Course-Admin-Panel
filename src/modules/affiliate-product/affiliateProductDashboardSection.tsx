@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import RichTextContent from "@/components/ui/rich-text-content";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/variants/toast.manager";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -79,7 +80,11 @@ function AffiliateProductDashboardSection() {
               )}
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-slate-900">{product.title}</p>
-                <p className="mt-1 truncate text-xs text-slate-500">{product.description || "Recommended product"}</p>
+                <RichTextContent
+                  className="mt-1 truncate text-xs text-slate-500"
+                  fallback="Recommended product"
+                  html={product.description}
+                />
               </div>
               <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
                 {product.status}

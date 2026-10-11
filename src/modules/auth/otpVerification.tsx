@@ -48,6 +48,7 @@ function OTPVerificationPage() {
       });
     } else {
       storeDataInSecureCookie(res?.data?.data?.auth_token, "yoga_platform_auth_token", true);
+      sessionStorage.removeItem("yoga_platform_auth_verification_failed");
       navigate("/dashboard");
       toast.promise(
         new Promise<{ name: string }>((resolve) => {

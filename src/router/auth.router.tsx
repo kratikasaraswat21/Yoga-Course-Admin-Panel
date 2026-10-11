@@ -5,8 +5,12 @@ import { getDataFromSecureCookie } from "@/utils/helper/helper";
 import RedirectToDashboard from "@/utils/lib/redirectToDashboard";
 import { Navigate, Route, Routes } from "react-router-dom";
 
+const AUTH_VERIFICATION_FAILED_KEY = "yoga_platform_auth_verification_failed";
+
 function AuthRoutes() {
-  if (getDataFromSecureCookie("yoga_platform_auth_token")) {
+  const hasFailedVerification = sessionStorage.getItem(AUTH_VERIFICATION_FAILED_KEY) === "true";
+
+  if (getDataFromSecureCookie("yoga_platform_auth_token") && !hasFailedVerification) {
     return <Navigate replace to="/dashboard" />;
   }
 
@@ -20,7 +24,8 @@ function AuthRoutes() {
         <img alt="Kratika Yoga" className="size-12 object-contain brightness-0 invert sm:size-14" src={logo} />
         <span className="font-serif text-xl font-medium tracking-wide text-white sm:text-2xl">Kratika Yoga</span>
       </div>
-      <div className="relative z-10 w-full h-full flex items-center justify-center">
+      {/* Centred on phones and tablets; on wide screens the card sits on the right, clear of the photo's subject. */}
+      <div className="relative z-10 flex h-full w-full items-center justify-center lg:justify-end xl:pr-[4vw]">
         <Routes>
           {APP_AUTH_ROUTES_MODULE_ARRAY?.map((item) => (
             <Route key={item?.label} path={item?.path} element={item?.module} />

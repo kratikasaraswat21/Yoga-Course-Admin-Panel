@@ -11,13 +11,15 @@ export const validatePdfCourseForm = (formData: PdfCourseFormData) => {
   }
 
   if (!formData.title.trim()) errors.title = ERROR_MESSAGES.PDF_TITLE_REQUIRED;
-  if (!formData.description.trim()) errors.description = ERROR_MESSAGES.PDF_DESCRIPTION_REQUIRED;
+  if (!formData.description.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim()) {
+    errors.description = ERROR_MESSAGES.PDF_DESCRIPTION_REQUIRED;
+  }
   if (!formData.fileUrl) errors.fileUrl = ERROR_MESSAGES.PDF_FILE_REQUIRED;
   if (!formData.thumbnailUrl) errors.thumbnailUrl = ERROR_MESSAGES.PDF_THUMBNAIL_REQUIRED;
 
   if (!formData.isAvailableForFree) {
     if (!Number.isFinite(formData.price) || formData.price <= 0) errors.price = ERROR_MESSAGES.PDF_PRICE_INVALID;
-    if (!Number.isInteger(formData.discount) || formData.discount < 0 || formData.discount > 100) {
+    if (!Number.isFinite(formData.discount) || formData.discount < 0 || formData.discount > 100) {
       errors.discount = ERROR_MESSAGES.PDF_DISCOUNT_INVALID;
     }
     if (formData.totalPayableAmount < 0) errors.totalPayableAmount = ERROR_MESSAGES.PDF_PAYABLE_AMOUNT_INVALID;

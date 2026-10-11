@@ -1,5 +1,6 @@
 export type CourseStatus = "Draft" | "Published" | "Archived";
 export type VideoThumbnailMode = "automatic" | "custom";
+export type PrelaunchState = "NONE" | "UPCOMING" | "LIVE" | "ENDED";
 
 export interface Course {
   id: string;
@@ -15,6 +16,13 @@ export interface Course {
   averageRating?: number;
   totalEnrolledStudents?: number;
   videoCount?: number;
+  slug?: string;
+  landingPageEnabled?: boolean;
+  sequentialUnlock?: boolean;
+  prelaunchState?: PrelaunchState;
+  prelaunchDiscount?: number;
+  prelaunchStartDate?: string | null;
+  prelaunchEndDate?: string | null;
   coverImageName: string;
   thumbnailUrl?: string;
   videoFileName: string;

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, type ReactElement } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import RichTextContent from "@/components/ui/rich-text-content";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -233,7 +234,7 @@ function AffiliateProductManagementPage() {
                       </span>
                     </div>
                     {product.description && (
-                      <p className="line-clamp-2 text-sm text-slate-500">{product.description}</p>
+                      <RichTextContent className="line-clamp-2 text-sm text-slate-500" html={product.description} />
                     )}
                     <div className="flex gap-2">
                       <ActionTooltip label="Edit product">

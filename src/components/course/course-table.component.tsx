@@ -1,8 +1,23 @@
-import { BarChart3, BookOpen, MoreHorizontal, Pencil, Percent, Send, Star, Trash2, Users, Video } from "lucide-react";
+import {
+  BarChart3,
+  BookOpen,
+  Globe,
+  ListOrdered,
+  MoreHorizontal,
+  Pencil,
+  Percent,
+  Rocket,
+  Send,
+  Star,
+  Trash2,
+  Users,
+  Video,
+} from "lucide-react";
 
 import CourseStatusBadge from "@/components/course/course-status-badge.component";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import RichTextContent from "@/components/ui/rich-text-content";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +29,40 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatCourseDate, formatCoursePrice } from "@/utils/helper/course.helper";
 import { isValidUrl } from "@/utils/helper/helper";
 import type { Course } from "@/utils/interface/course.interface";
+
+const PRELAUNCH_BADGE: Record<string, { label: string; className: string } | undefined> = {
+  UPCOMING: { label: "Prelaunch soon", className: "bg-blue-50 text-blue-700" },
+  LIVE: { label: "Prelaunch live", className: "bg-amber-50 text-amber-800" },
+  ENDED: { label: "Prelaunch ended", className: "bg-slate-100 text-slate-600" },
+};
+
+/** Small badges for the optional landing page and the prelaunch offer. */
+function CourseFeatureBadges({ course }: { course: Course }) {
+  const prelaunchBadge = course.prelaunchState ? PRELAUNCH_BADGE[course.prelaunchState] : undefined;
+  if (!course.landingPageEnabled && !prelaunchBadge && !course.sequentialUnlock) return null;
+
+  return (
+    <div className="mt-1.5 flex flex-wrap gap-1.5">
+      {course.landingPageEnabled && (
+        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700">
+          <Globe aria-hidden="true" className="size-3" /> Landing page
+        </span>
+      )}
+      {course.sequentialUnlock && (
+        <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-700">
+          <ListOrdered aria-hidden="true" className="size-3" /> Videos in order
+        </span>
+      )}
+      {prelaunchBadge && (
+        <span
+          className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium ${prelaunchBadge.className}`}>
+          <Rocket aria-hidden="true" className="size-3" /> {prelaunchBadge.label}
+          {course.prelaunchState !== "ENDED" && course.prelaunchDiscount ? ` · ${course.prelaunchDiscount}% off` : ""}
+        </span>
+      )}
+    </div>
+  );
+}
 
 interface CourseTableProps {
   courses: Course[];
@@ -161,7 +210,8 @@ function CourseTable({ courses, isLoading = false, onDelete, onEdit, onPublish, 
                     </div>
                     <div className="min-w-0">
                       <p className="truncate font-medium">{course.title}</p>
-                      <p className="mt-1 truncate text-xs text-slate-500">{course.description}</p>
+                      <RichTextContent className="mt-1 truncate text-xs text-slate-500" html={course.description} />
+                      <CourseFeatureBadges course={course} />
                     </div>
                   </div>
                 </TableCell>
@@ -181,7 +231,13 @@ function CourseTable({ courses, isLoading = false, onDelete, onEdit, onPublish, 
                 <TableCell className="font-medium">{formatCoursePrice(course.payableAmount)}</TableCell>
                 <TableCell className="text-slate-500">{formatCourseDate(course.updatedAt)}</TableCell>
                 <TableCell className="pr-4 text-right">
-                  <CourseActions course={course} onAnalytics={onAnalytics} onDelete={onDelete} onEdit={onEdit} onPublish={onPublish} />
+                  <CourseActions
+                    course={course}
+                    onAnalytics={onAnalytics}
+                    onDelete={onDelete}
+                    onEdit={onEdit}
+                    onPublish={onPublish}
+                  />
                 </TableCell>
               </TableRow>
             ))}
@@ -207,9 +263,16 @@ function CourseTable({ courses, isLoading = false, onDelete, onEdit, onPublish, 
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="font-medium leading-5">{course.title}</p>
-                  <p className="mt-1 line-clamp-1 text-xs text-slate-500">{course.description}</p>
+                  <RichTextContent className="mt-1 line-clamp-1 text-xs text-slate-500" html={course.description} />
+                  <CourseFeatureBadges course={course} />
                 </div>
-                <CourseActions course={course} onAnalytics={onAnalytics} onDelete={onDelete} onEdit={onEdit} onPublish={onPublish} />
+                <CourseActions
+                  course={course}
+                  onAnalytics={onAnalytics}
+                  onDelete={onDelete}
+                  onEdit={onEdit}
+                  onPublish={onPublish}
+                />
               </div>
 
               <div className="flex flex-wrap items-center gap-2">

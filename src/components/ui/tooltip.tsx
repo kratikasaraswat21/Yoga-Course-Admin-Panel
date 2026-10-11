@@ -15,7 +15,10 @@ function TooltipContent({ className, children, side = "top", sideOffset = 6, ...
       <TooltipPrimitive.Positioner side={side} sideOffset={sideOffset}>
         <TooltipPrimitive.Popup
           data-slot="tooltip-content"
-          className={cn("z-[110] rounded-md bg-slate-950 px-2.5 py-1.5 text-xs text-white shadow-md", className)}
+          className={cn(
+            "z-[110] whitespace-nowrap rounded-md bg-slate-950 px-2.5 py-1.5 text-xs text-white shadow-md",
+            className,
+          )}
           {...props}>
           {children}
         </TooltipPrimitive.Popup>

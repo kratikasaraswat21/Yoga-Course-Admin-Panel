@@ -1,3 +1,4 @@
+import { EnvConfig } from "@/utils/config/envConfig";
 import type { CookieConfigInterface } from "@/utils/interface/helper.interface";
 import { clsx, type ClassValue } from "clsx";
 import Cookies from "js-cookie";
@@ -12,7 +13,8 @@ const getCookieConfig = (): CookieConfigInterface => {
     secure: true,
     sameSite: "Lax",
     path: "/",
-    domain: "admin.kratikayoga.com",
+    // Development (e.g. localhost) uses the current host; production scopes the cookie to the admin domain.
+    ...(EnvConfig.CURRENT_ENVIRONMENT === "PRODUCTION" ? { domain: "admin.kratikayoga.com" } : {}),
     expires: 30,
   };
 };
@@ -53,9 +55,19 @@ export const clearLocalSessionStorage = () => {
   localStorage.clear();
   sessionStorage.clear();
 
-  const cookieConfig: CookieConfigInterface = getCookieConfig();
-  Object.keys(Cookies.get()).forEach((cookieName) => {
-    Cookies.remove(cookieName, cookieConfig);
+  const cookieNames = Object.keys(Cookies.get());
+  const cookieDomains = [
+    undefined,
+    "admin.kratikayoga.com",
+    ".admin.kratikayoga.com",
+    "kratikayoga.com",
+    ".kratikayoga.com",
+  ];
+
+  cookieNames.forEach((cookieName) => {
+    cookieDomains.forEach((domain) => {
+      Cookies.remove(cookieName, { domain, path: "/" });
+    });
   });
 };
 
