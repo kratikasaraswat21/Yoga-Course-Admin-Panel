@@ -40,10 +40,11 @@ const uploadToCloudinary = async (file: File, signature: MediaSignature) => {
 };
 
 /**
- * Student feedback screenshots shown on the home page and every course landing page, in this order.
- * Upload several at once, drag to reorder, delete with a confirmation.
+ * Student feedback screenshots, in this order. Upload several at once, drag to reorder, delete with a
+ * confirmation. Without `courseId` it manages the global images (home page, and course pages that have
+ * none of their own); with it, that course's own images.
  */
-function InstagramFeedbackManagementPage() {
+export function InstagramFeedbackManager({ courseId }: { courseId?: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [images, setImages] = useState<InstagramFeedbackImage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -53,9 +54,14 @@ function InstagramFeedbackManagementPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  const isCourse = Boolean(courseId);
+  const courseQuery = courseId ? `?courseId=${encodeURIComponent(courseId)}` : "";
+
   useEffect(() => {
     let isActive = true;
-    multipleApiHandler([{ endPoint: "instagram-feedback/fetch", method: "GET", protected: true }]).then((response) => {
+    multipleApiHandler([
+      { endPoint: `instagram-feedback/fetch${courseQuery}`, method: "GET", protected: true },
+    ]).then((response) => {
       if (!isActive) return;
       const result = response[0];
       setImages(result?.data?.success && Array.isArray(result.data.data?.images) ? result.data.data.images : []);
@@ -64,7 +70,7 @@ function InstagramFeedbackManagementPage() {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [courseQuery]);
 
   const handleFiles = async (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
@@ -89,7 +95,7 @@ function InstagramFeedbackManagementPage() {
             endPoint: "instagram-feedback/add",
             method: "POST",
             protected: true,
-            data: { imageUrl, publicId, altText: "Student feedback" },
+            data: { imageUrl, publicId, altText: "Student feedback", ...(courseId && { courseId }) },
           },
         ]);
         const result = response[0];
@@ -133,7 +139,7 @@ function InstagramFeedbackManagementPage() {
         endPoint: "instagram-feedback/reorder",
         method: "PUT",
         protected: true,
-        data: { orderedIds: reordered.map((image) => image.id) },
+        data: { orderedIds: reordered.map((image) => image.id), ...(courseId && { courseId }) },
       },
     ]);
     const result = response[0];
@@ -165,15 +171,25 @@ function InstagramFeedbackManagementPage() {
   };
 
   return (
-    <section className="flex min-h-full w-full flex-col p-4 sm:p-6 lg:p-8">
+    <div className="flex flex-1 flex-col">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Instagram Feedback</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-            Screenshots of student messages, shown on the home page and every course landing page in this order. Drag an
-            image to move it.
-          </p>
-        </div>
+        {isCourse ? (
+          <div>
+            <p className="text-sm font-medium">Screenshots for this course</p>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
+              Shown only on this course&apos;s page, in this order. Drag an image to move it. Without any, the page shows
+              the global screenshots from Instagram Feedback. Changes save right away.
+            </p>
+          </div>
+        ) : (
+          <div>
+            <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Instagram Feedback</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+              Screenshots of student messages, shown on the home page and on every course page that has none of its own,
+              in this order. Drag an image to move it.
+            </p>
+          </div>
+        )}
         <Button
           className="h-10 gap-2"
           disabled={uploadProgress !== null}
@@ -201,7 +217,7 @@ function InstagramFeedbackManagementPage() {
       </div>
 
       {isLoading ? (
-        <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        <div className={`mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 ${isCourse ? "lg:grid-cols-4" : "lg:grid-cols-5"}`}>
           {Array.from({ length: 5 }, (_, index) => (
             <Skeleton className="aspect-[9/16] w-full rounded-xl bg-slate-200" key={index} />
           ))}
@@ -211,12 +227,13 @@ function InstagramFeedbackManagementPage() {
           <MessageSquareHeart className="size-8 text-slate-400" />
           <p className="mt-3 font-medium">No screenshots yet</p>
           <p className="mt-1 max-w-sm text-sm text-slate-500">
-            Upload PNG, JPG or WebP screenshots (up to 5 MB each). Until you add some, the website shows its built-in
-            screenshots.
+            {isCourse
+              ? "Upload PNG, JPG or WebP screenshots (up to 5 MB each). Until you add some, this course shows the global screenshots."
+              : "Upload PNG, JPG or WebP screenshots (up to 5 MB each). Until you add some, the website shows its built-in screenshots."}
           </p>
         </div>
       ) : (
-        <ul className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        <ul className={`mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 ${isCourse ? "lg:grid-cols-4" : "lg:grid-cols-5"}`}>
           {images.map((image, index) => (
             <li
               className={`group relative overflow-hidden rounded-xl border bg-white transition ${
@@ -280,6 +297,15 @@ function InstagramFeedbackManagementPage() {
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+/** Admin page for the global screenshots. */
+function InstagramFeedbackManagementPage() {
+  return (
+    <section className="flex min-h-full w-full flex-col p-4 sm:p-6 lg:p-8">
+      <InstagramFeedbackManager />
     </section>
   );
 }

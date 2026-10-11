@@ -37,6 +37,16 @@ export interface LandingIconItem {
 }
 
 /** Every editable section of the public course landing page. Mirrors the backend schema. */
+/** One week of the roadmap. `points` holds one bullet per line; the image is 16:9. */
+export interface LandingRoadmapWeek {
+  title: string;
+  text: string;
+  pointsTitle: string;
+  points: string;
+  imageUrl: string;
+  imageId: string;
+}
+
 export interface CourseLandingContent {
   announcement: PhaseText;
   hero: {
@@ -57,7 +67,15 @@ export interface CourseLandingContent {
   stats: LandingIconItem[];
   painPoints: { title: string; text: string; items: LandingIconItem[] };
   howItWorks: { title: string; text: string; steps: { title: string; text: string }[] };
-  benefits: { title: string; text: string; items: string[] };
+  /** Roadmap: `weeks` open one at a time, each with its own 16:9 image; then a `button` to the price card and a one-line `note`. */
+  benefits: {
+    eyebrow: string;
+    title: string;
+    text: string;
+    weeks: LandingRoadmapWeek[];
+    button: string;
+    note: string;
+  };
   curriculum: { title: string; text: string };
   pricing: {
     title: string;
@@ -66,6 +84,8 @@ export interface CourseLandingContent {
     badge: PhaseText;
     stepsTitle: string;
     steps: { prelaunch: string[]; live: string[] };
+    /** Ticked list under the steps, e.g. "30 daily videos, 10–12 min each". */
+    features: string[];
     button: string;
     /** Line under the price. */
     note: string;

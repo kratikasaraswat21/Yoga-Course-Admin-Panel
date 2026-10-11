@@ -1,4 +1,4 @@
-import type { CourseLandingContent } from "./add-course.types";
+import type { CourseLandingContent, LandingRoadmapWeek } from "./add-course.types";
 
 /** Placeholders the public page fills in. Shown to the admin as a hint. */
 export const LANDING_PLACEHOLDERS = [
@@ -11,6 +11,62 @@ export const LANDING_PLACEHOLDERS = [
   { token: "{lessonCount}", description: "number of lessons, e.g. 30" },
   { token: "{totalDuration}", description: "length of all lessons together, e.g. 1h 32m" },
 ] as const;
+
+/** Roadmap weeks for the "What you'll get" section; also offered to courses saved before weeks existed. */
+export const ROADMAP_WEEKS_TEMPLATE: LandingRoadmapWeek[] = [
+  {
+    title: "Week 1: Build the foundation",
+    text: "Learn how flexibility actually works and begin strengthening the muscles that support safe range of motion.",
+    pointsTitle: "By the end of week 1:",
+    points: [
+      "You'll know exactly why you've been tight in the same places for years",
+      "A forward fold that comes from your hips, not your lower back",
+      "Hamstrings that lengthen instead of gripping back",
+    ].join("\n"),
+    imageUrl: "",
+    imageId: "",
+  },
+  {
+    title: "Week 2: Strengthen your stretches",
+    text: "Develop active flexibility by building strength at end ranges, helping your body feel safe to open.",
+    pointsTitle: "By the end of week 2:",
+    points: [
+      "Lift your leg higher without using your hands",
+      "Hold a shape at your end range instead of collapsing into it",
+      "Stretches that hold overnight instead of resetting by morning",
+    ].join("\n"),
+    imageUrl: "",
+    imageId: "",
+  },
+  {
+    title: "Week 3: Expand range with control",
+    text: "Increase mobility through controlled, intentional movement instead of forcing depth.",
+    pointsTitle: "By the end of week 3:",
+    points: [
+      "Visibly more depth in hips, hamstrings and shoulders",
+      "Getting into deep shapes without bracing for pain",
+      "Confidence to go further because you're strong there",
+    ].join("\n"),
+    imageUrl: "",
+    imageId: "",
+  },
+  {
+    title: "Week 4: Integrate and maintain",
+    text: "Bring strength and flexibility together so your progress feels stable, repeatable and sustainable.",
+    pointsTitle: "By the end of week 4:",
+    points: [
+      "A short maintenance routine that keeps your range",
+      "Range that stays with you between sessions",
+      "A clear plan for what to work on next",
+    ].join("\n"),
+    imageUrl: "",
+    imageId: "",
+  },
+];
+export const ROADMAP_BUTTON_TEMPLATE = "I want to train this way → {price}";
+export const ROADMAP_EYEBROW_TEMPLATE = "Your 4-week roadmap";
+export const ROADMAP_NOTE_TEMPLATE =
+  "Everyone's body is different. Go at your own pace, and check with your doctor first if you have an injury or health condition.";
 
 export const EMPTY_LANDING_CONTENT: CourseLandingContent = {
   announcement: { prelaunch: "", live: "" },
@@ -30,7 +86,14 @@ export const EMPTY_LANDING_CONTENT: CourseLandingContent = {
   stats: [],
   painPoints: { title: "", text: "", items: [] },
   howItWorks: { title: "", text: "", steps: [] },
-  benefits: { title: "", text: "", items: [] },
+  benefits: {
+    eyebrow: "",
+    title: "",
+    text: "",
+    weeks: [],
+    button: "",
+    note: "",
+  },
   curriculum: { title: "", text: "" },
   pricing: {
     title: "",
@@ -38,6 +101,7 @@ export const EMPTY_LANDING_CONTENT: CourseLandingContent = {
     badge: { prelaunch: "", live: "" },
     stepsTitle: "",
     steps: { prelaunch: [], live: [] },
+    features: [],
     button: "",
     note: "",
   },
@@ -133,15 +197,12 @@ export const LANDING_CONTENT_TEMPLATE: CourseLandingContent = {
     ],
   },
   benefits: {
-    title: "Move better in *30 days*.",
-    text: "Small, steady sessions that add up to real, lasting change.",
-    items: [
-      "Greater range of motion in hips, spine, shoulders and ankles",
-      "Less stiffness and tension from long sitting hours",
-      "Better posture and body awareness",
-      "A simple daily habit you can actually stick to",
-      "Confidence to move freely in everyday life",
-    ],
+    eyebrow: ROADMAP_EYEBROW_TEMPLATE,
+    title: "Your flexibility roadmap",
+    text: "A progressive system designed to help you improve flexibility while staying strong, supported, and injury-free.",
+    weeks: ROADMAP_WEEKS_TEMPLATE,
+    button: ROADMAP_BUTTON_TEMPLATE,
+    note: ROADMAP_NOTE_TEMPLATE,
   },
   curriculum: {
     title: "{lessonCount} lessons. *{totalDuration} total.*",
@@ -160,6 +221,13 @@ export const LANDING_CONTENT_TEMPLATE: CourseLandingContent = {
       prelaunch: ["Enroll now at *{discount}% off*", "Confirmation email, instantly", "Course unlocks *{launchDate}*"],
       live: ["Enroll now", "Get instant access after payment", "Start Day 1 today"],
     },
+    features: [
+      "30 daily videos, 10–12 min each",
+      "Lifetime access, on phone, tablet or TV",
+      "No equipment needed, just a mat",
+      "Follow at your own pace",
+      "Support from Kratika by email",
+    ],
     button: "Enroll in the course",
     note: "One-time payment · lifetime access · no subscription",
   },

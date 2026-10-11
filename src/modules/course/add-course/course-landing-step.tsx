@@ -6,11 +6,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/components/ui/variants/toast.manager";
 import { multipleApiHandler } from "@/utils/api/multiple.api";
+import { InstagramFeedbackManager } from "@/modules/instagram-feedback/instagramFeedbackManagement";
 import { EnvConfig } from "@/utils/config/envConfig";
 import { ERROR_MESSAGES } from "@/utils/constants/error.constants";
 import type { CourseLandingContent, CourseLandingPage, CourseTrailer } from "./add-course.types";
 import {
   EMPTY_LANDING_CONTENT,
+  ROADMAP_BUTTON_TEMPLATE,
+  ROADMAP_EYEBROW_TEMPLATE,
+  ROADMAP_NOTE_TEMPLATE,
+  ROADMAP_WEEKS_TEMPLATE,
   isLandingContentEmpty,
   LANDING_CONTENT_TEMPLATE,
   LANDING_PLACEHOLDERS,
@@ -96,6 +101,7 @@ const validateContent = (content: CourseLandingContent) => {
     ["stat tile", content.stats],
     ["pain point", content.painPoints.items],
     ["'How it works' step", content.howItWorks.steps],
+    ["roadmap week", content.benefits.weeks],
   ] as const;
   for (const [label, items] of needsTitle) {
     if (items.some((item) => Object.values(item).some((value) => value.trim()) && !item.title.trim())) {
@@ -129,6 +135,17 @@ function CourseLandingStep({ ref, courseId }: { ref?: Ref<CourseLandingStepHandl
 
   const update = <Key extends keyof CourseLandingContent>(key: Key, value: CourseLandingContent[Key]) => {
     setContent((current) => ({ ...current, [key]: value }));
+    setError(null);
+  };
+  // Reads the latest weeks, since an image finishes uploading after other edits may have happened.
+  const updateWeekImage = (index: number, image: { imageUrl: string; imageId: string }) => {
+    setContent((current) => ({
+      ...current,
+      benefits: {
+        ...current.benefits,
+        weeks: current.benefits.weeks.map((week, i) => (i === index ? { ...week, ...image } : week)),
+      },
+    }));
     setError(null);
   };
   const updateIn = <Key extends SectionKey>(key: Key, patch: Partial<CourseLandingContent[Key]>) => {
@@ -176,6 +193,18 @@ function CourseLandingStep({ ref, courseId }: { ref?: Ref<CourseLandingStepHandl
         if (isLandingContentEmpty(savedContent)) {
           setContent(structuredClone(LANDING_CONTENT_TEMPLATE));
           setUsedTemplate(true);
+        } else if (savedContent.benefits.weeks.length === 0) {
+          // Saved before the roadmap existed: offer the template weeks and button (saved with this step).
+          setContent({
+            ...savedContent,
+            benefits: {
+              ...savedContent.benefits,
+              eyebrow: savedContent.benefits.eyebrow || ROADMAP_EYEBROW_TEMPLATE,
+              weeks: structuredClone(ROADMAP_WEEKS_TEMPLATE),
+              button: savedContent.benefits.button || ROADMAP_BUTTON_TEMPLATE,
+              note: savedContent.benefits.note || ROADMAP_NOTE_TEMPLATE,
+            },
+          });
         } else {
           setContent(savedContent);
         }
@@ -558,7 +587,18 @@ function CourseLandingStep({ ref, courseId }: { ref?: Ref<CourseLandingStepHandl
             />
           </EditorSection>
 
-          <EditorSection description="Dark section with a checklist." title="7. What you'll gain">
+          <EditorSection
+            description="Roadmap: one card per week on the left (one open at a time) and the open week's image on the right; then a button to the price card and a short note."
+            title="7. Roadmap">
+            <TextField
+              hint="Small capitals above the title. Leave empty to hide it."
+              id="gain-eyebrow"
+              label="Label above the title"
+              maxLength={SHORT}
+              onChange={(eyebrow) => updateIn("benefits", { eyebrow })}
+              placeholder="e.g. Your 4-week roadmap"
+              value={content.benefits.eyebrow}
+            />
             <TextField
               hint={HIGHLIGHT_HINT}
               id="gain-title"
@@ -575,13 +615,61 @@ function CourseLandingStep({ ref, courseId }: { ref?: Ref<CourseLandingStepHandl
               onChange={(text) => updateIn("benefits", { text })}
               value={content.benefits.text}
             />
-            <TextListField
-              id="gain-items"
-              items={content.benefits.items}
-              label="Checklist"
+            <ObjectListField
+              emptyItem={{ title: "", text: "", pointsTitle: "", points: "", imageUrl: "", imageId: "" }}
+              fields={[
+                { key: "title", label: "Title", maxLength: 120, placeholder: "e.g. Week 1: Build the foundation" },
+                { key: "text", label: "Short line under the title", maxLength: TEXT, multiline: true },
+                {
+                  key: "pointsTitle",
+                  label: "Points heading (optional)",
+                  maxLength: SHORT,
+                  placeholder: "e.g. By the end of week 1:",
+                },
+                { key: "points", label: "Points (one per line)", maxLength: LONG, multiline: true },
+              ]}
+              hint="One card per week, in order; the first one starts open. Each line of “Points” becomes a ticked line. Add each week's image below."
+              itemLabel="Week"
+              items={content.benefits.weeks}
+              label="Weeks"
               maxItems={12}
-              maxLength={TITLE}
-              onChange={(items) => updateIn("benefits", { items })}
+              onChange={(weeks) => updateIn("benefits", { weeks })}
+            />
+            {content.benefits.weeks.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-sm font-medium">Week images</p>
+                <p className="text-xs text-slate-500">
+                  16:9, shown on the right while that week is open.
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {content.benefits.weeks.map((week, index) => (
+                    <ImageField
+                      aspectClassName="aspect-video"
+                      imageUrl={week.imageUrl ?? ""}
+                      key={index}
+                      label={week.title.trim() || `Week ${index + 1}`}
+                      onChange={(image) => updateWeekImage(index, image)}
+                      requiredAspect={{ width: 16, height: 9, example: "1600 × 900 px" }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+            <TextField
+              hint="Under the weeks; takes the visitor to the price card. Use {price} for the current price. Leave empty to hide the button."
+              id="gain-button"
+              label="Button"
+              maxLength={SHORT}
+              onChange={(button) => updateIn("benefits", { button })}
+              value={content.benefits.button}
+            />
+            <TextField
+              hint="One line at the end of the section, e.g. a safety note. Leave empty to hide it."
+              id="gain-note"
+              label="Note under the section"
+              maxLength={TEXT}
+              onChange={(note) => updateIn("benefits", { note })}
+              value={content.benefits.note}
             />
           </EditorSection>
 
@@ -607,7 +695,7 @@ function CourseLandingStep({ ref, courseId }: { ref?: Ref<CourseLandingStepHandl
           </EditorSection>
 
           <EditorSection
-            description="The price card: offer badge, countdown, price, steps and the button. The prices come from step 1."
+            description="The price card: price, offer badge, steps, what's included and the button. The prices come from step 1."
             title="9. Pricing">
             <TextField
               hint={HIGHLIGHT_HINT}
@@ -658,6 +746,15 @@ function CourseLandingStep({ ref, courseId }: { ref?: Ref<CourseLandingStepHandl
                 onChange={(live) => updateIn("pricing", { steps: { ...content.pricing.steps, live } })}
               />
             </div>
+            <TextListField
+              hint={`Ticked list under the steps box, e.g. “30 daily videos, 10–12 min each”. ${HIGHLIGHT_HINT}`}
+              id="price-features"
+              items={content.pricing.features ?? []}
+              label="What's included"
+              maxItems={12}
+              maxLength={TITLE}
+              onChange={(features) => updateIn("pricing", { features })}
+            />
             <div className="grid gap-4 sm:grid-cols-2">
               <TextField
                 id="price-button"
@@ -810,7 +907,9 @@ function CourseLandingStep({ ref, courseId }: { ref?: Ref<CourseLandingStepHandl
             />
           </EditorSection>
 
-          <EditorSection description="Feedback screenshots and quotes." title="11. Student love">
+          <EditorSection
+            description="Feedback screenshots and quotes. Screenshots added here show only on this course; without any, the global ones from Instagram Feedback show."
+            title="11. Student love">
             <TextField
               hint={HIGHLIGHT_HINT}
               id="love-title"
@@ -827,6 +926,11 @@ function CourseLandingStep({ ref, courseId }: { ref?: Ref<CourseLandingStepHandl
               />
               Show the Instagram feedback screenshots
             </label>
+            {content.testimonials.showScreenshots && courseId && (
+              <div className="rounded-lg border p-4">
+                <InstagramFeedbackManager courseId={courseId} />
+              </div>
+            )}
             <ObjectListField
               emptyItem={{ text: "", name: "" }}
               fields={[
