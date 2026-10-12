@@ -27,7 +27,6 @@ export const ERROR_MESSAGES = {
   COURSE_THUMBNAIL_NETWORK_ERROR: "A network error occurred while uploading the course thumbnail.",
   COURSE_VIDEO_UPLOAD_FAILED_TITLE: "Video upload failed",
   COURSE_VIDEO_INVALID: "Choose an MP4, MOV, or WebM video.",
-  COURSE_VIDEO_SIZE_INVALID: "Video size cannot exceed 50 GB.",
   COURSE_VIDEO_ALLOWED_TYPES: ["video/mp4", "video/quicktime", "video/webm"],
   COURSE_VIDEO_TITLE_REQUIRED: "Enter a video title.",
   COURSE_VIDEO_THUMBNAIL_REQUIRED: "Choose a custom thumbnail or select automatic thumbnail generation.",
