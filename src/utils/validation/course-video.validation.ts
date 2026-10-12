@@ -38,7 +38,6 @@ export const validateCourseVideoFile = (file: File) => {
   if (!ERROR_MESSAGES.COURSE_VIDEO_ALLOWED_TYPES.some((type) => type === file.type)) {
     return ERROR_MESSAGES.COURSE_VIDEO_INVALID;
   }
-  if (file.size > 50 * 1024 * 1024 * 1024) return ERROR_MESSAGES.COURSE_VIDEO_SIZE_INVALID;
   return undefined;
 };
 
