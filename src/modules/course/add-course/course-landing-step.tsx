@@ -39,7 +39,7 @@ const LONG = 1500;
 const SAFE_LINK = /^(https?:\/\/|\/(?!\/)|#|mailto:|tel:)/i;
 const BUTTON_LINK_HINT = "Leave the link empty to hide the button. e.g. https://calendly.com/…, /courses or #buy";
 
-const HIGHLIGHT_HINT = "Wrap words in *asterisks* to highlight them.";
+const HIGHLIGHT_HINT = "Wrap words in *asterisks* to highlight them, or in ~tildes~ to strike them through (e.g. ~{originalPrice}~ {price}).";
 const ICON_HINT = "Use an emoji or upload an icon (SVG, PNG or WebP). An uploaded icon is shown instead of the emoji.";
 
 export interface CourseLandingStepHandle {
